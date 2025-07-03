@@ -18,6 +18,7 @@ npm install
 
 ```
 src/lexer   – scanner
+src/tokens  – tokens
 examples    – programas de exemplo
 ```
 
