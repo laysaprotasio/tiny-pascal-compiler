@@ -9,7 +9,7 @@ Projeto em Node.js que implementa um analisador léxico e sintático para a ling
 ## Instalação
 
 ```bash
-git clone 
+git clone https://github.com/usuario/tiny-pascal-compiler.git
 cd tiny-pascal-compiler
 npm install
 ```
