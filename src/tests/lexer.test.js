@@ -200,3 +200,74 @@ describe('TinyPascalLexer.getNextToken', () => {
     expect(token.value).toBe('@');
   });
 });
+
+describe('TinyPascalLexer.tokenize', () => {
+  it('should tokenize a simple variable declaration and assignment', () => {
+    const code = `var x: integer; begin x := 10; end.`;
+    const lexer = new TinyPascalLexer(code);
+    const tokens = lexer.tokenize();
+    const types = tokens.map(t => t.type);
+    const values = tokens.map(t => t.value);
+    expect(types).toEqual([
+      TokenType.KEYWORD, TokenType.IDENTIFIER, TokenType.PUNCTUATION, TokenType.KEYWORD, TokenType.PUNCTUATION, TokenType.KEYWORD, TokenType.IDENTIFIER, TokenType.OPERATOR, TokenType.NUMBER, TokenType.PUNCTUATION, TokenType.KEYWORD, TokenType.PUNCTUATION, TokenType.EOF
+    ]);
+    expect(values).toEqual([
+      'var', 'x', ':', 'integer', ';', 'begin', 'x', ':=', 10, ';', 'end', '.', null
+    ]);
+  });
+
+  it('should tokenize a function declaration and call', () => {
+    const code = `function soma(a: integer; b: integer): integer; begin return a + b; end; x := soma(1, 2);`;
+    const lexer = new TinyPascalLexer(code);
+    const tokens = lexer.tokenize();
+    const types = tokens.map(t => t.type);
+    expect(types).toContain(TokenType.KEYWORD);
+    expect(types).toContain(TokenType.IDENTIFIER);
+    expect(types).toContain(TokenType.OPERATOR);
+    expect(types).toContain(TokenType.NUMBER);
+    expect(types).toContain(TokenType.PUNCTUATION);
+    expect(types).toContain(TokenType.EOF);
+  });
+
+  it('should tokenize control flow statements', () => {
+    const code = `if x < y then x := y else x := 0; while x > 0 do x := x - 1;`;
+    const lexer = new TinyPascalLexer(code);
+    const tokens = lexer.tokenize();
+    const values = tokens.map(t => t.value);
+    expect(values).toContain('if');
+    expect(values).toContain('then');
+    expect(values).toContain('else');
+    expect(values).toContain('while');
+    expect(values).toContain('do');
+    expect(values).toContain('<');
+    expect(values).toContain('>');
+    expect(values).toContain('-');
+  });
+
+  it('should tokenize write and string', () => {
+    const code = `writeln('Resultado: ', x);`;
+    const lexer = new TinyPascalLexer(code);
+    const tokens = lexer.tokenize();
+    const values = tokens.map(t => t.value);
+    expect(values).toContain('writeln');
+    expect(values).toContain('Resultado: ');
+    expect(values).toContain(',');
+    expect(values).toContain('x');
+    expect(values).toContain('(');
+    expect(values).toContain(')');
+    expect(values).toContain(';');
+  });
+
+  it('should return only EOF for empty or whitespace input', () => {
+    const lexer = new TinyPascalLexer('    \n\t   ');
+    const tokens = lexer.tokenize();
+    expect(tokens.length).toBe(1);
+    expect(tokens[0].type).toBe(TokenType.EOF);
+  });
+
+  it('should return UNKNOWN for invalid characters', () => {
+    const lexer = new TinyPascalLexer('@#');
+    const tokens = lexer.tokenize();
+    expect(tokens.some(t => t.type === 'UNKNOWN')).toBe(true);
+  });
+});
