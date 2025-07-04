@@ -107,7 +107,13 @@ class TinyPascalLexer {
     }
 
     tokenize() {
-       
+        const tokens = [];
+        let token;
+        do {
+            token = this.getNextToken();
+            tokens.push(token);
+        } while (token.type !== TokenType.EOF);
+        return tokens;
     }
 
     readNumber() {
