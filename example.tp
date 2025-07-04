@@ -1,0 +1,33 @@
+var
+  x, y: integer;
+  msg: boolean;
+
+function soma(a: integer; b: integer): integer;
+begin
+  return a + b;
+end;
+
+procedure imprimeResultado;
+begin
+  writeln('Resultado: ', x);
+end;
+
+begin
+  x := 10;
+  y := 20;
+  msg := true;
+  if x < y then
+    x := soma(x, y)
+  else
+    x := 0;
+  while x > 0 do
+  begin
+    x := x - 1;
+    if x = 5 then
+      continue;
+    if x = 2 then
+      break;
+    writeln(x);
+  end;
+  imprimeResultado;
+end.
