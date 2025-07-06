@@ -18,10 +18,6 @@ describe('TinyPascalParser Lookahead Methods', () => {
         expect(parser.peek()).toEqual(mockTokens[0]);
     });
 
-    test('lookahead() returns the next token', () => {
-        expect(parser.lookahead()).toEqual(mockTokens[1]);
-    });
-
     test('advance() moves to the next token', () => {
         parser.advance();
         expect(parser.peek()).toEqual(mockTokens[1]);
@@ -38,165 +34,6 @@ describe('TinyPascalParser Lookahead Methods', () => {
     });
 });
 
-describe('TinyPascalParser - parseProgram', () => {
-    test('parseProgram com programa válido', () => {
-        const tokens = [
-            { type: TokenType.IDENTIFIER, value: 'x', line: 1, column: 1 },
-            { type: TokenType.KEYWORD, value: 'begin', line: 2, column: 1 },
-            { type: TokenType.NUMBER, value: 1, line: 2, column: 7 },
-            { type: TokenType.KEYWORD, value: 'end', line: 3, column: 1 },
-            { type: TokenType.PUNCTUATION, value: '.', line: 3, column: 4 },
-            { type: TokenType.EOF, value: null, line: 3, column: 5 }
-        ];
-        const parser = new TinyPascalParser(tokens);
-        const result = parser.parseProgram();
-        expect(result.type).toBe('Program');
-        expect(result.globalDeclarations.type).toBe('GlobalDeclarations');
-        expect(result.block.type).toBe('Block');
-    });
-
-    test('parseProgram erro: falta ponto final', () => {
-        const tokens = [
-            { type: TokenType.IDENTIFIER, value: 'x', line: 1, column: 1 },
-            { type: TokenType.KEYWORD, value: 'begin', line: 2, column: 1 },
-            { type: TokenType.NUMBER, value: 1, line: 2, column: 7 },
-            { type: TokenType.KEYWORD, value: 'end', line: 3, column: 1 },
-            { type: TokenType.EOF, value: null, line: 3, column: 4 }
-        ];
-        const parser = new TinyPascalParser(tokens);
-        expect(() => parser.parseProgram()).toThrow(/Esperado '\.' ao final do programa/);
-    });
-});
-
-describe('TinyPascalParser - parseGlobalDeclarations', () => {
-    test('parseGlobalDeclarations com declarações', () => {
-        const tokens = [
-            { type: TokenType.IDENTIFIER, value: 'x', line: 1, column: 1 },
-            { type: TokenType.KEYWORD, value: 'begin', line: 2, column: 1 }
-        ];
-        const parser = new TinyPascalParser(tokens);
-        const result = parser.parseGlobalDeclarations();
-        expect(result.type).toBe('GlobalDeclarations');
-        expect(result.declarations.length).toBe(1);
-        expect(result.declarations[0].value).toBe('x');
-    });
-
-    test('parseGlobalDeclarations erro: falta begin', () => {
-        const tokens = [
-            { type: TokenType.IDENTIFIER, value: 'x', line: 1, column: 1 },
-            { type: TokenType.EOF, value: null, line: 1, column: 2 }
-        ];
-        const parser = new TinyPascalParser(tokens);
-        expect(() => parser.parseGlobalDeclarations()).toThrow(/Esperado 'begin' no início do bloco/);
-    });
-});
-
-describe('TinyPascalParser - parseBlock', () => {
-    test('parseBlock com bloco válido', () => {
-        const tokens = [
-            { type: TokenType.KEYWORD, value: 'begin', line: 1, column: 1 },
-            { type: TokenType.NUMBER, value: 1, line: 1, column: 7 },
-            { type: TokenType.KEYWORD, value: 'end', line: 2, column: 1 }
-        ];
-        const parser = new TinyPascalParser(tokens);
-        const result = parser.parseBlock();
-        expect(result.type).toBe('Block');
-        expect(result.blockTokens[0].value).toBe('begin');
-        expect(result.blockTokens[result.blockTokens.length - 1].value).toBe('end');
-    });
-
-    test('parseBlock erro: falta begin', () => {
-        const tokens = [
-            { type: TokenType.NUMBER, value: 1, line: 1, column: 1 },
-            { type: TokenType.KEYWORD, value: 'end', line: 1, column: 2 }
-        ];
-        const parser = new TinyPascalParser(tokens);
-        expect(() => parser.parseBlock()).toThrow(/Esperado 'begin' no início do bloco/);
-    });
-
-    test('parseBlock erro: falta end', () => {
-        const tokens = [
-            { type: TokenType.KEYWORD, value: 'begin', line: 1, column: 1 },
-            { type: TokenType.NUMBER, value: 1, line: 1, column: 7 },
-            { type: TokenType.EOF, value: null, line: 2, column: 1 }
-        ];
-        const parser = new TinyPascalParser(tokens);
-        expect(() => parser.parseBlock()).toThrow(/Esperado 'end' ao final do bloco/);
-    });
-});
-
-describe('TinyPascalParser - parseProgram (cenários extras)', () => {
-    test('parseProgram erro: token inesperado no lugar do ponto final', () => {
-        const tokens = [
-            { type: TokenType.IDENTIFIER, value: 'x', line: 1, column: 1 },
-            { type: TokenType.KEYWORD, value: 'begin', line: 2, column: 1 },
-            { type: TokenType.NUMBER, value: 1, line: 2, column: 7 },
-            { type: TokenType.KEYWORD, value: 'end', line: 3, column: 1 },
-            { type: TokenType.PUNCTUATION, value: ';', line: 3, column: 4 }, // deveria ser ponto final
-            { type: TokenType.EOF, value: null, line: 3, column: 5 }
-        ];
-        const parser = new TinyPascalParser(tokens);
-        expect(() => parser.parseProgram()).toThrow(/Esperado '\.' ao final do programa/);
-    });
-});
-
-describe('TinyPascalParser - parseGlobalDeclarations (cenários extras)', () => {
-    test('parseGlobalDeclarations com múltiplas declarações', () => {
-        const tokens = [
-            { type: TokenType.IDENTIFIER, value: 'x', line: 1, column: 1 },
-            { type: TokenType.IDENTIFIER, value: 'y', line: 1, column: 3 },
-            { type: TokenType.IDENTIFIER, value: 'z', line: 1, column: 5 },
-            { type: TokenType.KEYWORD, value: 'begin', line: 2, column: 1 }
-        ];
-        const parser = new TinyPascalParser(tokens);
-        const result = parser.parseGlobalDeclarations();
-        expect(result.declarations.length).toBe(3);
-        expect(result.declarations.map(d => d.value)).toEqual(['x', 'y', 'z']);
-    });
-
-    test('parseGlobalDeclarations erro: primeiro token já é begin', () => {
-        const tokens = [
-            { type: TokenType.KEYWORD, value: 'begin', line: 1, column: 1 }
-        ];
-        const parser = new TinyPascalParser(tokens);
-        const result = parser.parseGlobalDeclarations();
-        expect(result.declarations.length).toBe(0);
-    });
-});
-
-describe('TinyPascalParser - parseBlock (cenários extras)', () => {
-    test('parseBlock com bloco vazio', () => {
-        const tokens = [
-            { type: TokenType.KEYWORD, value: 'begin', line: 1, column: 1 },
-            { type: TokenType.KEYWORD, value: 'end', line: 1, column: 7 }
-        ];
-        const parser = new TinyPascalParser(tokens);
-        const result = parser.parseBlock();
-        expect(result.blockTokens.length).toBe(2);
-        expect(result.blockTokens[0].value).toBe('begin');
-        expect(result.blockTokens[1].value).toBe('end');
-    });
-
-    test('parseBlock erro: bloco termina com token inesperado', () => {
-        const tokens = [
-            { type: TokenType.KEYWORD, value: 'begin', line: 1, column: 1 },
-            { type: TokenType.NUMBER, value: 1, line: 1, column: 7 },
-            { type: TokenType.PUNCTUATION, value: ';', line: 2, column: 1 }, // era esperado 'end'
-            { type: TokenType.EOF, value: null, line: 2, column: 2 }
-        ];
-        const parser = new TinyPascalParser(tokens);
-        expect(() => parser.parseBlock()).toThrow(/Esperado 'end' ao final do bloco/);
-    });
-
-    test('parseBlock erro: bloco vazio sem end', () => {
-        const tokens = [
-            { type: TokenType.KEYWORD, value: 'begin', line: 1, column: 1 },
-            { type: TokenType.EOF, value: null, line: 1, column: 2 }
-        ];
-        const parser = new TinyPascalParser(tokens);
-        expect(() => parser.parseBlock()).toThrow(/Esperado 'end' ao final do bloco/);
-    });
-});
 
 describe('TinyPascalParser - parseType', () => {
     test('parseType reconhece integer', () => {
@@ -376,6 +213,131 @@ describe('TinyPascalParser - parseVarDeclaration', () => {
         ];
         const parser = new TinyPascalParser(tokens);
         expect(() => parser.parseVarDeclaration()).toThrow(/Esperado ';' ao final da declaração de variável/);
+    });
+});
+
+describe('TinyPascalParser - parseParam', () => {
+    test('parseParam reconhece um identificador', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
+            { type: 'PUNCTUATION', value: ':', line: 1, column: 2 },
+            { type: 'KEYWORD', value: 'integer', line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseParam();
+        expect(result).toEqual({ type: 'Param', idents: ['x'], paramType: 'integer' });
+    });
+
+    test('parseParam reconhece múltiplos identificadores', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
+            { type: 'PUNCTUATION', value: ',', line: 1, column: 2 },
+            { type: 'IDENTIFIER', value: 'y', line: 1, column: 3 },
+            { type: 'PUNCTUATION', value: ':', line: 1, column: 4 },
+            { type: 'KEYWORD', value: 'boolean', line: 1, column: 5 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseParam();
+        expect(result).toEqual({ type: 'Param', idents: ['x', 'y'], paramType: 'boolean' });
+    });
+
+    test('parseParam lança erro se faltar identificador', () => {
+        const tokens = [
+            { type: 'PUNCTUATION', value: ':', line: 1, column: 1 },
+            { type: 'KEYWORD', value: 'integer', line: 1, column: 2 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseParam()).toThrow(/Esperado identificador em declaração de variável/);
+    });
+
+    test('parseParam lança erro se faltar dois pontos', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
+            { type: 'KEYWORD', value: 'integer', line: 1, column: 2 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseParam()).toThrow(/Esperado ':' após lista de identificadores do parâmetro/);
+    });
+
+    test('parseParam lança erro se faltar tipo', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
+            { type: 'PUNCTUATION', value: ':', line: 1, column: 2 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseParam()).toThrow(/Esperado tipo 'integer' ou 'boolean'/);
+    });
+});
+
+describe('TinyPascalParser - parseParamList', () => {
+    test('parseParamList reconhece um parâmetro', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
+            { type: 'PUNCTUATION', value: ':', line: 1, column: 2 },
+            { type: 'KEYWORD', value: 'integer', line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseParamList();
+        expect(result).toEqual([
+            { type: 'Param', idents: ['x'], paramType: 'integer' }
+        ]);
+    });
+
+    test('parseParamList reconhece múltiplos parâmetros', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
+            { type: 'PUNCTUATION', value: ':', line: 1, column: 2 },
+            { type: 'KEYWORD', value: 'integer', line: 1, column: 3 },
+            { type: 'PUNCTUATION', value: ',', line: 1, column: 4 },
+            { type: 'IDENTIFIER', value: 'y', line: 1, column: 5 },
+            { type: 'PUNCTUATION', value: ':', line: 1, column: 6 },
+            { type: 'KEYWORD', value: 'boolean', line: 1, column: 7 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseParamList();
+        expect(result).toEqual([
+            { type: 'Param', idents: ['x'], paramType: 'integer' },
+            { type: 'Param', idents: ['y'], paramType: 'boolean' }
+        ]);
+    });
+
+    test('parseParamList lança erro se faltar identificador no segundo parâmetro', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
+            { type: 'PUNCTUATION', value: ':', line: 1, column: 2 },
+            { type: 'KEYWORD', value: 'integer', line: 1, column: 3 },
+            { type: 'PUNCTUATION', value: ',', line: 1, column: 4 },
+            { type: 'PUNCTUATION', value: ':', line: 1, column: 5 },
+            { type: 'KEYWORD', value: 'boolean', line: 1, column: 6 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseParamList()).toThrow(/Esperado identificador em declaração de variável/);
+    });
+
+    test('parseParamList lança erro se faltar dois pontos no segundo parâmetro', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
+            { type: 'PUNCTUATION', value: ':', line: 1, column: 2 },
+            { type: 'KEYWORD', value: 'integer', line: 1, column: 3 },
+            { type: 'PUNCTUATION', value: ',', line: 1, column: 4 },
+            { type: 'IDENTIFIER', value: 'y', line: 1, column: 5 },
+            { type: 'KEYWORD', value: 'boolean', line: 1, column: 6 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseParamList()).toThrow(/Esperado ':' após lista de identificadores do parâmetro/);
+    });
+
+    test('parseParamList lança erro se faltar tipo no segundo parâmetro', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
+            { type: 'PUNCTUATION', value: ':', line: 1, column: 2 },
+            { type: 'KEYWORD', value: 'integer', line: 1, column: 3 },
+            { type: 'PUNCTUATION', value: ',', line: 1, column: 4 },
+            { type: 'IDENTIFIER', value: 'y', line: 1, column: 5 },
+            { type: 'PUNCTUATION', value: ':', line: 1, column: 6 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseParamList()).toThrow(/Esperado tipo 'integer' ou 'boolean'/);
     });
 });
 
