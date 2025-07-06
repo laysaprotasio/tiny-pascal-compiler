@@ -8,6 +8,5 @@ const code = fs.readFileSync(examplePath, 'utf-8');
 const lexer = new TinyPascalLexer(code);
 const tokens = lexer.tokenize();
 
-tokens.forEach(token => {
-  console.log(`[${token.type}] (${token.line},${token.column}): ${token.value}`);
-});
+console.log(tokens);
+console.log(lexer.symbolTable);

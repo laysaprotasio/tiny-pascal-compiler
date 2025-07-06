@@ -9,7 +9,7 @@ end;
 
 procedure imprimeResultado;
 begin
-  writeln('Resultado: ', x);
+  writeln(x);
 end;
 
 begin

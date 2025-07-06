@@ -7,8 +7,8 @@ class TinyPascalLexer {
         this.line = 1;
         this.column = 1;
         this.currentChar = this.sourceCode[0];
+        this.symbolTable = [];
     }
-
 
     advance() {
         if (this.currentChar === '\n') {
@@ -103,6 +103,9 @@ class TinyPascalLexer {
         let token;
         do {
             token = this.getNextToken();
+            if (token.type === TokenType.IDENTIFIER) {
+                this.symbolTable.push({identifier: token.value, index: tokens.length});
+            }
             tokens.push(token);
         } while (token.type !== TokenType.EOF);
         return tokens;
