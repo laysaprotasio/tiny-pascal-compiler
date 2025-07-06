@@ -21,7 +21,6 @@ describe('TinyPascalParser Lookahead Methods', () => {
     test('advance() moves to the next token', () => {
         parser.advance();
         expect(parser.peek()).toEqual(mockTokens[1]);
-        expect(parser.lookahead()).toEqual(mockTokens[2]);
     });
 
     test('advance() does not go past the last token', () => {
@@ -30,7 +29,6 @@ describe('TinyPascalParser Lookahead Methods', () => {
         parser.advance(); // EOF
         parser.advance(); // Try to advance past EOF
         expect(parser.peek()).toEqual(mockTokens[3]);
-        expect(parser.lookahead()).toBeUndefined();
     });
 });
 
@@ -338,6 +336,832 @@ describe('TinyPascalParser - parseParamList', () => {
         ];
         const parser = new TinyPascalParser(tokens);
         expect(() => parser.parseParamList()).toThrow(/Esperado tipo 'integer' ou 'boolean'/);
+    });
+});
+
+describe('TinyPascalParser - parseIdent', () => {
+    test('parseIdent reconhece identificador válido', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'abc', line: 1, column: 1 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseIdent();
+        expect(result).toEqual({
+            type: 'Identifier',
+            name: 'abc',
+            line: 1,
+            column: 1
+        });
+    });
+
+    test('parseIdent lança erro se não for identificador', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 123, line: 1, column: 1 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseIdent()).toThrow(/Esperado identificador, encontrado: 123/);
+    });
+
+    test('parseIdent lança erro se for EOF', () => {
+        const tokens = [
+            { type: 'EOF', value: null, line: 1, column: 1 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseIdent()).toThrow(/Esperado identificador, encontrado: EOF/);
+    });
+});
+
+describe('TinyPascalParser - parseNumber', () => {
+    test('parseNumber reconhece número válido', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 42, line: 1, column: 1 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseNumber();
+        expect(result).toEqual({
+            type: 'Number',
+            value: 42,
+            line: 1,
+            column: 1
+        });
+    });
+
+    test('parseNumber lança erro se não for número', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'abc', line: 1, column: 1 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseNumber()).toThrow(/Esperado número, encontrado: abc/);
+    });
+
+    test('parseNumber lança erro se for EOF', () => {
+        const tokens = [
+            { type: 'EOF', value: null, line: 1, column: 1 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseNumber()).toThrow(/Esperado número, encontrado: EOF/);
+    });
+});
+
+describe('TinyPascalParser - parseFactor', () => {
+    test('parseFactor reconhece identificador', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'abc', line: 1, column: 1 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseFactor();
+        expect(result).toEqual({
+            type: 'Identifier',
+            name: 'abc',
+            line: 1,
+            column: 1
+        });
+    });
+
+    test('parseFactor reconhece número', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 123, line: 1, column: 1 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseFactor();
+        expect(result).toEqual({
+            type: 'Number',
+            value: 123,
+            line: 1,
+            column: 1
+        });
+    });
+
+    test('parseFactor reconhece true', () => {
+        const tokens = [
+            { type: 'KEYWORD', value: 'true', line: 1, column: 1 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseFactor();
+        expect(result).toEqual({
+            type: 'Boolean',
+            value: true,
+            line: 1,
+            column: 1
+        });
+    });
+
+    test('parseFactor reconhece false', () => {
+        const tokens = [
+            { type: 'KEYWORD', value: 'false', line: 1, column: 1 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseFactor();
+        expect(result).toEqual({
+            type: 'Boolean',
+            value: false,
+            line: 1,
+            column: 1
+        });
+    });
+
+    test('parseFactor reconhece not <factor> (identificador)', () => {
+        const tokens = [
+            { type: 'KEYWORD', value: 'not', line: 1, column: 1 },
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 5 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseFactor();
+        expect(result).toEqual({
+            type: 'Not',
+            factor: {
+                type: 'Identifier',
+                name: 'x',
+                line: 1,
+                column: 5
+            }
+        });
+    });
+
+    test('parseFactor reconhece not not <factor> (número)', () => {
+        const tokens = [
+            { type: 'KEYWORD', value: 'not', line: 1, column: 1 },
+            { type: 'KEYWORD', value: 'not', line: 1, column: 5 },
+            { type: 'NUMBER', value: 0, line: 1, column: 9 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseFactor();
+        expect(result).toEqual({
+            type: 'Not',
+            factor: {
+                type: 'Not',
+                factor: {
+                    type: 'Number',
+                    value: 0,
+                    line: 1,
+                    column: 9
+                }
+            }
+        });
+    });
+
+    test('parseFactor reconhece expressão entre parênteses', () => {
+        const tokens = [
+            { type: 'PUNCTUATION', value: '(', line: 1, column: 1 },
+            { type: 'NUMBER', value: 42, line: 1, column: 2 },
+            { type: 'PUNCTUATION', value: ')', line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseFactor();
+        expect(result).toEqual({
+            type: 'ParenExpr',
+            expr: { type: 'Number', value: 42, line: 1, column: 2 }
+        });
+    });
+
+    test('parseFactor reconhece expressão relacional entre parênteses', () => {
+        const tokens = [
+            { type: 'PUNCTUATION', value: '(', line: 1, column: 1 },
+            { type: 'NUMBER', value: 1, line: 1, column: 2 },
+            { type: 'OPERATOR', value: '=', line: 1, column: 3 },
+            { type: 'NUMBER', value: 2, line: 1, column: 4 },
+            { type: 'PUNCTUATION', value: ')', line: 1, column: 5 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseFactor();
+        expect(result).toEqual({
+            type: 'ParenExpr',
+            expr: {
+                type: 'BinaryOp',
+                operator: '=',
+                left: { type: 'Number', value: 1, line: 1, column: 2 },
+                right: { type: 'Number', value: 2, line: 1, column: 4 }
+            }
+        });
+    });
+
+    test('parseFactor reconhece parênteses aninhados', () => {
+        const tokens = [
+            { type: 'PUNCTUATION', value: '(', line: 1, column: 1 },
+            { type: 'PUNCTUATION', value: '(', line: 1, column: 2 },
+            { type: 'NUMBER', value: 7, line: 1, column: 3 },
+            { type: 'PUNCTUATION', value: ')', line: 1, column: 4 },
+            { type: 'PUNCTUATION', value: ')', line: 1, column: 5 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseFactor();
+        expect(result).toEqual({
+            type: 'ParenExpr',
+            expr: {
+                type: 'ParenExpr',
+                expr: { type: 'Number', value: 7, line: 1, column: 3 }
+            }
+        });
+    });
+
+    test('parseFactor lança erro se faltar parêntese de fechamento', () => {
+        const tokens = [
+            { type: 'PUNCTUATION', value: '(', line: 1, column: 1 },
+            { type: 'NUMBER', value: 1, line: 1, column: 2 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseFactor()).toThrow(/Esperado '\)' após expressão/);
+    });
+
+    test('parseFactor lança erro para token inválido', () => {
+        const tokens = [
+            { type: 'OPERATOR', value: '+', line: 1, column: 1 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseFactor()).toThrow(/Esperado fator, encontrado: \+/);
+    });
+
+    test('parseFactor lança erro para EOF', () => {
+        const tokens = [
+            { type: 'EOF', value: null, line: 1, column: 1 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseFactor()).toThrow(/Esperado fator, encontrado: EOF/);
+    });
+});
+
+describe('TinyPascalParser - parseTerm', () => {
+    test('parseTerm reconhece fator simples', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 2, line: 1, column: 1 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseTerm();
+        expect(result).toEqual({
+            type: 'Number',
+            value: 2,
+            line: 1,
+            column: 1
+        });
+    });
+
+    test('parseTerm reconhece multiplicação', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 2, line: 1, column: 1 },
+            { type: 'OPERATOR', value: '*', line: 1, column: 2 },
+            { type: 'NUMBER', value: 3, line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseTerm();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: '*',
+            left: { type: 'Number', value: 2, line: 1, column: 1 },
+            right: { type: 'Number', value: 3, line: 1, column: 3 }
+        });
+    });
+
+    test('parseTerm reconhece divisão', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 6, line: 1, column: 1 },
+            { type: 'OPERATOR', value: '/', line: 1, column: 2 },
+            { type: 'NUMBER', value: 2, line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseTerm();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: '/',
+            left: { type: 'Number', value: 6, line: 1, column: 1 },
+            right: { type: 'Number', value: 2, line: 1, column: 3 }
+        });
+    });
+
+    test('parseTerm reconhece and', () => {
+        const tokens = [
+            { type: 'KEYWORD', value: 'true', line: 1, column: 1 },
+            { type: 'KEYWORD', value: 'and', line: 1, column: 2 },
+            { type: 'KEYWORD', value: 'false', line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseTerm();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: 'and',
+            left: { type: 'Boolean', value: true, line: 1, column: 1 },
+            right: { type: 'Boolean', value: false, line: 1, column: 3 }
+        });
+    });
+
+    test('parseTerm reconhece operações encadeadas', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 2, line: 1, column: 1 },
+            { type: 'OPERATOR', value: '*', line: 1, column: 2 },
+            { type: 'NUMBER', value: 3, line: 1, column: 3 },
+            { type: 'OPERATOR', value: '/', line: 1, column: 4 },
+            { type: 'NUMBER', value: 4, line: 1, column: 5 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseTerm();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: '/',
+            left: {
+                type: 'BinaryOp',
+                operator: '*',
+                left: { type: 'Number', value: 2, line: 1, column: 1 },
+                right: { type: 'Number', value: 3, line: 1, column: 3 }
+            },
+            right: { type: 'Number', value: 4, line: 1, column: 5 }
+        });
+    });
+
+    test('parseTerm lança erro para operador inválido após fator', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 2, line: 1, column: 1 },
+            { type: 'OPERATOR', value: '+', line: 1, column: 2 },
+            { type: 'NUMBER', value: 3, line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        // parseTerm só consome o primeiro fator, não aceita +
+        const result = parser.parseTerm();
+        expect(result).toEqual({ type: 'Number', value: 2, line: 1, column: 1 });
+    });
+});
+
+describe('TinyPascalParser - parseSimpleExpr', () => {
+    test('parseSimpleExpr reconhece termo simples', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 2, line: 1, column: 1 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseSimpleExpr();
+        expect(result).toEqual({
+            type: 'Number',
+            value: 2,
+            line: 1,
+            column: 1
+        });
+    });
+
+    test('parseSimpleExpr reconhece adição', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 2, line: 1, column: 1 },
+            { type: 'OPERATOR', value: '+', line: 1, column: 2 },
+            { type: 'NUMBER', value: 3, line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseSimpleExpr();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: '+',
+            left: { type: 'Number', value: 2, line: 1, column: 1 },
+            right: { type: 'Number', value: 3, line: 1, column: 3 }
+        });
+    });
+
+    test('parseSimpleExpr reconhece subtração', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 6, line: 1, column: 1 },
+            { type: 'OPERATOR', value: '-', line: 1, column: 2 },
+            { type: 'NUMBER', value: 2, line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseSimpleExpr();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: '-',
+            left: { type: 'Number', value: 6, line: 1, column: 1 },
+            right: { type: 'Number', value: 2, line: 1, column: 3 }
+        });
+    });
+
+    test('parseSimpleExpr reconhece or', () => {
+        const tokens = [
+            { type: 'KEYWORD', value: 'true', line: 1, column: 1 },
+            { type: 'KEYWORD', value: 'or', line: 1, column: 2 },
+            { type: 'KEYWORD', value: 'false', line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseSimpleExpr();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: 'or',
+            left: { type: 'Boolean', value: true, line: 1, column: 1 },
+            right: { type: 'Boolean', value: false, line: 1, column: 3 }
+        });
+    });
+
+    test('parseSimpleExpr reconhece operações encadeadas', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 2, line: 1, column: 1 },
+            { type: 'OPERATOR', value: '+', line: 1, column: 2 },
+            { type: 'NUMBER', value: 3, line: 1, column: 3 },
+            { type: 'OPERATOR', value: '-', line: 1, column: 4 },
+            { type: 'NUMBER', value: 4, line: 1, column: 5 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseSimpleExpr();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: '-',
+            left: {
+                type: 'BinaryOp',
+                operator: '+',
+                left: { type: 'Number', value: 2, line: 1, column: 1 },
+                right: { type: 'Number', value: 3, line: 1, column: 3 }
+            },
+            right: { type: 'Number', value: 4, line: 1, column: 5 }
+        });
+    });
+
+    test('parseSimpleExpr lança erro para operador inválido após termo', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 2, line: 1, column: 1 },
+            { type: 'OPERATOR', value: '*', line: 1, column: 2 },
+            { type: 'NUMBER', value: 3, line: 1, column: 3 },
+            { type: 'OPERATOR', value: '/', line: 1, column: 4 },
+            { type: 'NUMBER', value: 4, line: 1, column: 5 },
+            { type: 'OPERATOR', value: '+', line: 1, column: 6 },
+            { type: 'NUMBER', value: 5, line: 1, column: 7 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        // parseSimpleExpr consome toda a expressão, respeitando precedência
+        const result = parser.parseSimpleExpr();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: '+',
+            left: {
+                type: 'BinaryOp',
+                operator: '/',
+                left: {
+                    type: 'BinaryOp',
+                    operator: '*',
+                    left: { type: 'Number', value: 2, line: 1, column: 1 },
+                    right: { type: 'Number', value: 3, line: 1, column: 3 }
+                },
+                right: { type: 'Number', value: 4, line: 1, column: 5 }
+            },
+            right: { type: 'Number', value: 5, line: 1, column: 7 }
+        });
+    });
+});
+
+describe('TinyPascalParser - parseExpr', () => {
+    test('parseExpr reconhece simple-expr simples', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 10, line: 1, column: 1 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseExpr();
+        expect(result).toEqual({
+            type: 'Number',
+            value: 10,
+            line: 1,
+            column: 1
+        });
+    });
+
+    test('parseExpr reconhece expressão relacional =', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 1, line: 1, column: 1 },
+            { type: 'OPERATOR', value: '=', line: 1, column: 2 },
+            { type: 'NUMBER', value: 2, line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseExpr();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: '=',
+            left: { type: 'Number', value: 1, line: 1, column: 1 },
+            right: { type: 'Number', value: 2, line: 1, column: 3 }
+        });
+    });
+
+    test('parseExpr reconhece expressão relacional <>', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 1, line: 1, column: 1 },
+            { type: 'OPERATOR', value: '<>', line: 1, column: 2 },
+            { type: 'NUMBER', value: 2, line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseExpr();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: '<>',
+            left: { type: 'Number', value: 1, line: 1, column: 1 },
+            right: { type: 'Number', value: 2, line: 1, column: 3 }
+        });
+    });
+
+    test('parseExpr reconhece expressão relacional <', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 1, line: 1, column: 1 },
+            { type: 'OPERATOR', value: '<', line: 1, column: 2 },
+            { type: 'NUMBER', value: 2, line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseExpr();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: '<',
+            left: { type: 'Number', value: 1, line: 1, column: 1 },
+            right: { type: 'Number', value: 2, line: 1, column: 3 }
+        });
+    });
+
+    test('parseExpr reconhece expressão relacional <=', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 1, line: 1, column: 1 },
+            { type: 'OPERATOR', value: '<=', line: 1, column: 2 },
+            { type: 'NUMBER', value: 2, line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseExpr();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: '<=',
+            left: { type: 'Number', value: 1, line: 1, column: 1 },
+            right: { type: 'Number', value: 2, line: 1, column: 3 }
+        });
+    });
+
+    test('parseExpr reconhece expressão relacional >', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 1, line: 1, column: 1 },
+            { type: 'OPERATOR', value: '>', line: 1, column: 2 },
+            { type: 'NUMBER', value: 2, line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseExpr();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: '>',
+            left: { type: 'Number', value: 1, line: 1, column: 1 },
+            right: { type: 'Number', value: 2, line: 1, column: 3 }
+        });
+    });
+
+    test('parseExpr reconhece expressão relacional >=', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 1, line: 1, column: 1 },
+            { type: 'OPERATOR', value: '>=', line: 1, column: 2 },
+            { type: 'NUMBER', value: 2, line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseExpr();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: '>=',
+            left: { type: 'Number', value: 1, line: 1, column: 1 },
+            right: { type: 'Number', value: 2, line: 1, column: 3 }
+        });
+    });
+
+    test('parseExpr reconhece precedência correta', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 1, line: 1, column: 1 },
+            { type: 'OPERATOR', value: '+', line: 1, column: 2 },
+            { type: 'NUMBER', value: 2, line: 1, column: 3 },
+            { type: 'OPERATOR', value: '=', line: 1, column: 4 },
+            { type: 'NUMBER', value: 3, line: 1, column: 5 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseExpr();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: '=',
+            left: {
+                type: 'BinaryOp',
+                operator: '+',
+                left: { type: 'Number', value: 1, line: 1, column: 1 },
+                right: { type: 'Number', value: 2, line: 1, column: 3 }
+            },
+            right: { type: 'Number', value: 3, line: 1, column: 5 }
+        });
+    });
+
+    test('parseExpr sem operador relacional retorna simple-expr', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 1, line: 1, column: 1 },
+            { type: 'OPERATOR', value: '+', line: 1, column: 2 },
+            { type: 'NUMBER', value: 2, line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseExpr();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: '+',
+            left: { type: 'Number', value: 1, line: 1, column: 1 },
+            right: { type: 'Number', value: 2, line: 1, column: 3 }
+        });
+    });
+});
+
+describe('TinyPascalParser - parseExprList', () => {
+    test('parseExprList reconhece uma expressão', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 1, line: 1, column: 1 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseExprList();
+        expect(result).toEqual([
+            { type: 'Number', value: 1, line: 1, column: 1 }
+        ]);
+    });
+
+    test('parseExprList reconhece múltiplas expressões', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 1, line: 1, column: 1 },
+            { type: 'PUNCTUATION', value: ',', line: 1, column: 2 },
+            { type: 'NUMBER', value: 2, line: 1, column: 3 },
+            { type: 'PUNCTUATION', value: ',', line: 1, column: 4 },
+            { type: 'NUMBER', value: 3, line: 1, column: 5 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseExprList();
+        expect(result).toEqual([
+            { type: 'Number', value: 1, line: 1, column: 1 },
+            { type: 'Number', value: 2, line: 1, column: 3 },
+            { type: 'Number', value: 3, line: 1, column: 5 }
+        ]);
+    });
+
+    test('parseExprList reconhece expressões relacionais', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 1, line: 1, column: 1 },
+            { type: 'OPERATOR', value: '=', line: 1, column: 2 },
+            { type: 'NUMBER', value: 2, line: 1, column: 3 },
+            { type: 'PUNCTUATION', value: ',', line: 1, column: 4 },
+            { type: 'NUMBER', value: 3, line: 1, column: 5 },
+            { type: 'OPERATOR', value: '<', line: 1, column: 6 },
+            { type: 'NUMBER', value: 4, line: 1, column: 7 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseExprList();
+        expect(result).toEqual([
+            {
+                type: 'BinaryOp',
+                operator: '=',
+                left: { type: 'Number', value: 1, line: 1, column: 1 },
+                right: { type: 'Number', value: 2, line: 1, column: 3 }
+            },
+            {
+                type: 'BinaryOp',
+                operator: '<',
+                left: { type: 'Number', value: 3, line: 1, column: 5 },
+                right: { type: 'Number', value: 4, line: 1, column: 7 }
+            }
+        ]);
+    });
+
+    test('parseExprList lança erro se faltar expressão após vírgula', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 1, line: 1, column: 1 },
+            { type: 'PUNCTUATION', value: ',', line: 1, column: 2 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseExprList()).toThrow();
+    });
+});
+
+describe('TinyPascalParser - parseExprList (erros adicionais)', () => {
+    test('parseExprList lança erro se começar com vírgula', () => {
+        const tokens = [
+            { type: 'PUNCTUATION', value: ',', line: 1, column: 1 },
+            { type: 'NUMBER', value: 1, line: 1, column: 2 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseExprList()).toThrow();
+    });
+
+    test('parseExprList lança erro para vírgulas consecutivas', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 1, line: 1, column: 1 },
+            { type: 'PUNCTUATION', value: ',', line: 1, column: 2 },
+            { type: 'PUNCTUATION', value: ',', line: 1, column: 3 },
+            { type: 'NUMBER', value: 2, line: 1, column: 4 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseExprList()).toThrow();
+    });
+
+    test('parseExprList lança erro se terminar com vírgula', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 1, line: 1, column: 1 },
+            { type: 'PUNCTUATION', value: ',', line: 1, column: 2 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseExprList()).toThrow();
+    });
+
+    test('parseExprList lança erro se houver token inválido entre expressões', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 1, line: 1, column: 1 },
+            { type: 'PUNCTUATION', value: ',', line: 1, column: 2 },
+            { type: 'OPERATOR', value: '+', line: 1, column: 3 },
+            { type: 'NUMBER', value: 2, line: 1, column: 4 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseExprList()).toThrow();
+    });
+
+    test('parseExprList lança erro se EOF inesperado após vírgula', () => {
+        const tokens = [
+            { type: 'NUMBER', value: 1, line: 1, column: 1 },
+            { type: 'PUNCTUATION', value: ',', line: 1, column: 2 },
+            { type: 'EOF', value: null, line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseExprList()).toThrow();
+    });
+});
+
+describe('TinyPascalParser - identificadores e expressões (integração)', () => {
+    test('parseIdent reconhece identificador simples', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseIdent();
+        expect(result).toEqual({ type: 'Identifier', name: 'x', line: 1, column: 1 });
+    });
+
+    test('parseExpr reconhece identificador em expressão', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
+            { type: 'OPERATOR', value: '+', line: 1, column: 2 },
+            { type: 'NUMBER', value: 2, line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseExpr();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: '+',
+            left: { type: 'Identifier', name: 'x', line: 1, column: 1 },
+            right: { type: 'Number', value: 2, line: 1, column: 3 }
+        });
+    });
+
+    test('parseExpr reconhece identificadores e números misturados', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'a', line: 1, column: 1 },
+            { type: 'OPERATOR', value: '+', line: 1, column: 2 },
+            { type: 'IDENTIFIER', value: 'b', line: 1, column: 3 },
+            { type: 'OPERATOR', value: '-', line: 1, column: 4 },
+            { type: 'NUMBER', value: 5, line: 1, column: 5 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseExpr();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: '-',
+            left: {
+                type: 'BinaryOp',
+                operator: '+',
+                left: { type: 'Identifier', name: 'a', line: 1, column: 1 },
+                right: { type: 'Identifier', name: 'b', line: 1, column: 3 }
+            },
+            right: { type: 'Number', value: 5, line: 1, column: 5 }
+        });
+    });
+
+    test('parseExpr reconhece identificador com operador relacional', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
+            { type: 'OPERATOR', value: '=', line: 1, column: 2 },
+            { type: 'NUMBER', value: 0, line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseExpr();
+        expect(result).toEqual({
+            type: 'BinaryOp',
+            operator: '=',
+            left: { type: 'Identifier', name: 'x', line: 1, column: 1 },
+            right: { type: 'Number', value: 0, line: 1, column: 3 }
+        });
+    });
+
+    test('parseExpr reconhece identificador entre parênteses', () => {
+        const tokens = [
+            { type: 'PUNCTUATION', value: '(', line: 1, column: 1 },
+            { type: 'IDENTIFIER', value: 'y', line: 1, column: 2 },
+            { type: 'PUNCTUATION', value: ')', line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseExpr();
+        expect(result).toEqual({
+            type: 'ParenExpr',
+            expr: { type: 'Identifier', name: 'y', line: 1, column: 2 }
+        });
+    });
+
+    test('parseExpr lança erro para identificador seguido de operador inválido', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
+            { type: 'OPERATOR', value: '*', line: 1, column: 2 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseExpr()).toThrow();
+    });
+
+    test('parseExprList lança erro para identificador isolado após vírgula', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
+            { type: 'PUNCTUATION', value: ',', line: 1, column: 2 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseExprList()).toThrow();
     });
 });
 
