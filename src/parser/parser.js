@@ -1,17 +1,14 @@
 const { TokenType, Keywords } = require('../lexer/tokens');
 
 class TinyPascalParser {
-    constructor(tokens) {
+    constructor(tokens, symbolTable) {
         this.tokens = tokens;
         this.current = 0;
+        this.symbolTable = symbolTable; 
     }
 
     peek() {
         return this.tokens[this.current];
-    }
-
-    lookahead() {
-        return this.tokens[this.current + 1];
     }
 
     advance() {
