@@ -26,7 +26,9 @@ class TinyPascalParser {
         const block = this.parseBlock();
         const dot = this.peek();
         if (!dot || dot.type !== 'PUNCTUATION' || dot.value !== '.') {
-            throw new Error(`Esperado '.' ao final do programa, encontrado: ${dot ? dot.value : 'EOF'}`);
+            const line = dot ? dot.line : (this.tokens[this.tokens.length - 1]?.line || 0);
+            const column = dot ? dot.column : (this.tokens[this.tokens.length - 1]?.column || 0);
+            throw new Error(`Esperado '.' ao final do programa, encontrado: ${dot ? dot.value : 'EOF'} (linha ${line}, coluna ${column})`);
         }
         this.advance();
         return {
@@ -47,7 +49,8 @@ class TinyPascalParser {
             this.advance();
         }
         if (!this.peek() || this.peek().type === 'EOF') {
-            throw new Error("Esperado 'begin' no início do bloco, encontrado: EOF");
+            const token = this.peek() || this.tokens[this.tokens.length - 1];
+            throw new Error(`Esperado 'begin' no início do bloco, encontrado: EOF (linha ${token.line}, coluna ${token.column})`);
         }
         return { type: 'GlobalDeclarations', declarations };
     }
@@ -72,13 +75,15 @@ class TinyPascalParser {
                 const found = this.peek()
                     ? (this.peek().value !== null ? this.peek().value : this.peek().type)
                     : 'EOF';
-                throw new Error(`Esperado 'end' ao final do bloco, encontrado: ${found}`);
+                const token = this.peek() || this.tokens[this.tokens.length - 1];
+                throw new Error(`Esperado 'end' ao final do bloco, encontrado: ${found} (linha ${token.line}, coluna ${token.column})`);
             }
         } else {
             const found = this.peek()
                 ? (this.peek().value !== null ? this.peek().value : this.peek().type)
                 : 'EOF';
-            throw new Error(`Esperado 'begin' no início do bloco, encontrado: ${found}`);
+            const token = this.peek() || this.tokens[this.tokens.length - 1];
+            throw new Error(`Esperado 'begin' no início do bloco, encontrado: ${found} (linha ${token.line}, coluna ${token.column})`);
         }
         return { type: 'Block', blockTokens };
     }
