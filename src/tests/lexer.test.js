@@ -81,12 +81,6 @@ describe('TinyPascalLexer.getNextToken', () => {
     expect(token.value).toBe(12345);
   });
 
-  it('should recognize a string with single quotes', () => {
-    const token = getTokenFromInput("'hello world'");
-    expect(token.type).toBe(TokenType.STRING);
-    expect(token.value).toBe('hello world');
-  });
-
   it('should recognize := operator', () => {
     const token = getTokenFromInput(':=');
     expect(token.type).toBe(TokenType.OPERATOR);
@@ -194,11 +188,12 @@ describe('TinyPascalLexer.getNextToken', () => {
     expect(token.type).toBe(TokenType.EOF);
   });
 
-  it('should recognize unknown character', () => {
-    const token = getTokenFromInput('@');
-    expect(token.type).toBe('UNKNOWN');
-    expect(token.value).toBe('@');
+  it('should throw an error on invalid character', () => {
+    expect(() => {
+      getTokenFromInput('@');
+    }).toThrow("Caractere inválido '@' na linha 1, coluna 1.");
   });
+
 });
 
 describe('TinyPascalLexer.tokenize', () => {
@@ -244,18 +239,14 @@ describe('TinyPascalLexer.tokenize', () => {
     expect(values).toContain('-');
   });
 
-  it('should tokenize write and string', () => {
-    const code = `writeln('Resultado: ', x);`;
+  it('should tokenize writeln with identifier and number', () => {
+    const code = `writeln(x, 123);`;
     const lexer = new TinyPascalLexer(code);
     const tokens = lexer.tokenize();
     const values = tokens.map(t => t.value);
-    expect(values).toContain('writeln');
-    expect(values).toContain('Resultado: ');
-    expect(values).toContain(',');
-    expect(values).toContain('x');
-    expect(values).toContain('(');
-    expect(values).toContain(')');
-    expect(values).toContain(';');
+    expect(values).toEqual([
+    'writeln', '(', 'x', ',', 123, ')', ';', null
+    ]);
   });
 
   it('should return only EOF for empty or whitespace input', () => {
@@ -265,9 +256,8 @@ describe('TinyPascalLexer.tokenize', () => {
     expect(tokens[0].type).toBe(TokenType.EOF);
   });
 
-  it('should return UNKNOWN for invalid characters', () => {
+  it('should throw an error when encountering invalid characters', () => {
     const lexer = new TinyPascalLexer('@#');
-    const tokens = lexer.tokenize();
-    expect(tokens.some(t => t.type === 'UNKNOWN')).toBe(true);
+    expect(() => lexer.tokenize()).toThrow(/Caractere inválido/);
   });
 });

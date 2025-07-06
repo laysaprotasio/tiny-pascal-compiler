@@ -48,10 +48,6 @@ class TinyPascalLexer {
             };
         }
 
-        if (this.currentChar === "'") {
-            return this.readString();
-        }
-
         if (/\d/.test(this.currentChar)) {
             return this.readNumber();
         }
@@ -96,14 +92,10 @@ class TinyPascalLexer {
         }
 
         const unknownChar = this.currentChar;
-        const token = {
-            type: 'UNKNOWN',
-            value: unknownChar,
-            line: this.line,
-            column: this.column
-        };
+        const line = this.line;
+        const column = this.column;
         this.advance();
-        return token;
+        throw new Error(`Caractere inválido '${unknownChar}' na linha ${line}, coluna ${column}.`);
     }
 
     tokenize() {
@@ -156,36 +148,6 @@ class TinyPascalLexer {
         };
     }
 
-    readString() {
-        if (this.currentChar !== "'") {
-            return {
-                type: TokenType.STRING,
-                value: '',
-                line: this.line,
-                column: this.column
-            };
-        }
-        const quoteType = this.currentChar;
-        let str = '';
-        const startLine = this.line;
-        const startColumn = this.column;
-        this.advance();
-        while (this.currentChar !== null && this.currentChar !== quoteType) {
-            str += this.currentChar;
-            this.advance();
-        }
-        if (this.currentChar === quoteType) {
-            this.advance();
-        } else {
-            throw new Error(`String não terminada na linha ${startLine}, coluna ${startColumn}`);
-        }
-        return {
-            type: TokenType.STRING,
-            value: str,
-            line: startLine,
-            column: startColumn
-        };
-    }
 }
 
 
