@@ -126,7 +126,6 @@ class TinyPascalParser {
         };
     }
 
-
     // Indentificadores e Números
     parseIdent() {
         const token = this.peek();
@@ -269,10 +268,149 @@ class TinyPascalParser {
         const exprs = [];
         exprs.push(this.parseExpr());
         while (this.peek() && this.peek().type === 'PUNCTUATION' && this.peek().value === ',') {
-            this.advance(); // consome a vírgula
+            this.advance(); 
             exprs.push(this.parseExpr());
         }
         return exprs;
+    }
+
+    parseStmtList() {
+        const stmts = [];
+        stmts.push(this.parseStmt());
+        while (this.peek() && this.peek().type === 'PUNCTUATION' && this.peek().value === ';') {
+            this.advance(); 
+            if (this.peek() && !(this.peek().type === 'KEYWORD' && this.peek().value === 'end')) {
+                stmts.push(this.parseStmt());
+            }
+        }
+        return { type: 'StmtList', statements: stmts };
+    }
+
+    parseStmt() {
+        const token = this.peek();
+
+        if (!token) throw new Error('Esperado comando, encontrado EOF');
+
+        if (token.type === 'KEYWORD') {
+            switch (token.value) {
+                case 'if':
+                    return this.parseIfStmt();
+                case 'while':
+                    return this.parseWhileStmt();
+                case 'writeln':
+                    return this.parseWriteStmt();
+                case 'break':
+                    return this.parseBreakStmt();
+                case 'continue':
+                    return this.parseContinueStmt();
+                case 'return':
+                    return this.parseReturnStmt();
+            }
+        }
+
+        if (token.type === 'IDENTIFIER') {
+            return this.parseAssignOrCall();
+        }
+
+        throw new Error(`Comando inválido: ${token.value} (linha ${token.line}, coluna ${token.column})`);
+    }
+
+    parseIfStmt() {
+        const tokenIf = this.peek();
+        this.advance(); 
+
+        const expr = this.parseExpr();
+
+        const thenToken = this.peek();
+            if (!thenToken || thenToken.type !== 'KEYWORD' || thenToken.value !== 'then') {
+                throw new Error(`Esperado 'then' após condição do if, encontrado: ${thenToken ? thenToken.value : 'EOF'} (linha ${thenToken?.line}, coluna ${thenToken?.column})`);
+            }
+        this.advance(); 
+
+        const thenStmt = this.parseStmt();
+
+        let elseStmt = null;
+        const maybeElse = this.peek();
+        if (maybeElse && maybeElse.type === 'KEYWORD' && maybeElse.value === 'else') {
+            this.advance(); 
+            elseStmt = this.parseStmt();
+        }
+
+        return {
+            type: 'IfStmt',
+            expr,
+            thenBranch: thenStmt,
+            elseBranch: elseStmt,
+            line: tokenIf.line,
+            column: tokenIf.column
+        };
+    }
+
+    parseAssignOrCall() {
+        const ident = this.parseIdent(); 
+
+        const next = this.peek();
+
+        //<assign-or-call> ::= <ident> <rest-id>
+        // <rest-id> ::= ':=' <expr> | ...
+        if (next && next.type === 'OPERATOR' && next.value === ':=') {
+            this.advance(); 
+            const expr = this.parseExpr();
+            return {
+                type: 'Assign',
+                target: ident,
+                value: expr,
+                line: ident.line,
+                column: ident.column
+            };
+        }
+
+        // '(' [ <expr-list> ]')'
+        if (next && next.type === 'PUNCTUATION' && next.value === '(') {
+            this.advance(); 
+
+            let args = [];
+            const lookahead = this.peek();
+            if (lookahead && (lookahead.type !== 'PUNCTUATION' || lookahead.value !== ')')) {
+                args = this.parseExprList();
+            }
+
+            const closing = this.peek();
+            if (!closing || closing.type !== 'PUNCTUATION' || closing.value !== ')') {
+                throw new Error(`Esperado ')' após chamada, encontrado: ${closing ? closing.value : 'EOF'} (linha ${closing?.line}, coluna ${closing?.column})`);
+            }
+            this.advance();
+
+            return {
+                type: 'Call',
+                callee: ident,
+                arguments: args,
+                line: ident.line,
+                column: ident.column
+            };
+        }
+
+        throw new Error(`Esperado ':=' ou '(' após identificador, encontrado: ${next ? next.value : 'EOF'} (linha ${next?.line}, coluna ${next?.column})`);
+    }  
+
+    parseWhileStmt() {
+
+    }
+
+    parseWriteStmt(){
+
+    }
+
+    parseBreakStmt(){
+
+    }
+
+    parseContinueStmt(){
+
+    }
+
+    parseReturnStmt(){
+        
     }
 }
 

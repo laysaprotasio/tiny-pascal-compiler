@@ -1163,5 +1163,56 @@ describe('TinyPascalParser - identificadores e expressões (integração)', () =
         const parser = new TinyPascalParser(tokens);
         expect(() => parser.parseExprList()).toThrow();
     });
+
+    test('parseStmt reconhece comando if sem else', () => {
+        const tokens = [
+            { type: 'KEYWORD', value: 'if', line: 1, column: 1 },
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 4 },
+            { type: 'OPERATOR', value: '=', line: 1, column: 6 },
+            { type: 'NUMBER', value: 1, line: 1, column: 8 },
+            { type: 'KEYWORD', value: 'then', line: 1, column: 10 },
+            { type: 'IDENTIFIER', value: 'y', line: 1, column: 15 },
+            { type: 'OPERATOR', value: ':=', line: 1, column: 17 },
+            { type: 'NUMBER', value: 2, line: 1, column: 20 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseStmt();
+        expect(result).toEqual({
+            type: 'IfStmt',
+            expr: {
+                type: 'BinaryOp',
+                operator: '=',
+                left: { type: 'Identifier', name: 'x', line: 1, column: 4 },
+                right: { type: 'Number', value: 1, line: 1, column: 8 }
+            },
+            thenBranch: {
+                type: 'Assign',
+                target: { type: 'Identifier', name: 'y', line: 1, column: 15 },
+                value: { type: 'Number', value: 2, line: 1, column: 20 },
+                line: 1,
+                column: 15
+            },
+            elseBranch: null,
+            line: 1,
+            column: 1
+        });
+    });
+
+    test('parseStmt reconhece comando de atribuição', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
+            { type: 'OPERATOR', value: ':=', line: 1, column: 2 },
+            { type: 'NUMBER', value: 42, line: 1, column: 3 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseStmt();
+        expect(result).toEqual({
+            type: 'Assign',
+            target: { type: 'Identifier', name: 'x', line: 1, column: 1 },
+            value: { type: 'Number', value: 42, line: 1, column: 3 },
+            line: 1,
+            column: 1
+        }); 
+    });
 });
 
