@@ -28,7 +28,26 @@ class TinyPascalParser {
     }
 
     parseBlock() {
+        const beginToken = this.peek();
+        if (!beginToken || beginToken.type !== 'KEYWORD' || beginToken.value !== 'begin') {
+            throw new Error(`Esperado 'begin' no início do bloco, encontrado: ${beginToken ? beginToken.value : 'EOF'} (linha ${beginToken?.line}, coluna ${beginToken?.column})`);
+        }
+        this.advance();
 
+        const stmtList = this.parseStmtList();
+
+        const endToken = this.peek();
+        if (!endToken || endToken.type !== 'KEYWORD' || endToken.value !== 'end') {
+            throw new Error(`Esperado 'end' ao final do bloco, encontrado: ${endToken ? endToken.value : 'EOF'} (linha ${endToken?.line}, coluna ${endToken?.column})`);
+        }
+        this.advance(); 
+
+        return {
+            type: 'Block',
+            statements: stmtList,
+            line: beginToken.line,
+            column: beginToken.column
+        };
     }
 
     //Declarações
@@ -92,19 +111,116 @@ class TinyPascalParser {
     }
 
     parseProcedureDeclaration() {
-        // Implementation of parseProcedureDeclaration method
+        // procedure <ident> [ '(' <param-list> ')' ] ';' <bloco> ';'
+        const procToken = this.peek();
+        if (!procToken || procToken.type !== 'KEYWORD' || procToken.value !== 'procedure') {
+            throw new Error(`Esperado 'procedure' no início da declaração de procedimento, encontrado: ${procToken ? procToken.value : 'EOF'} (linha ${procToken?.line}, coluna ${procToken?.column})`);
+        }
+        this.advance();
+
+        const name = this.parseIdent();
+
+        let params = [];
+        const openParen = this.peek();
+        if (openParen && openParen.type === 'PUNCTUATION' && openParen.value === '(') {
+            this.advance();
+            if (this.peek() && (this.peek().type !== 'PUNCTUATION' || this.peek().value !== ')')) {
+                params = this.parseParamList();
+            }
+            const closeParen = this.peek();
+            if (!closeParen || closeParen.type !== 'PUNCTUATION' || closeParen.value !== ')') {
+                throw new Error(`Esperado ')' após lista de parâmetros, encontrado: ${closeParen ? closeParen.value : 'EOF'} (linha ${closeParen?.line}, coluna ${closeParen?.column})`);
+            }
+            this.advance();
+        }
+
+        const semicolon = this.peek();
+        if (!semicolon || semicolon.type !== 'PUNCTUATION' || semicolon.value !== ';') {
+            throw new Error(`Esperado ';' após cabeçalho do procedimento, encontrado: ${semicolon ? semicolon.value : 'EOF'} (linha ${semicolon?.line}, coluna ${semicolon?.column})`);
+        }
+        this.advance();
+
+        const body = this.parseBlock();
+
+        const endSemicolon = this.peek();
+        if (!endSemicolon || endSemicolon.type !== 'PUNCTUATION' || endSemicolon.value !== ';') {
+            throw new Error(`Esperado ';' após 'end' do procedimento, encontrado: ${endSemicolon ? endSemicolon.value : 'EOF'} (linha ${endSemicolon?.line}, coluna ${endSemicolon?.column})`);
+        }
+        this.advance();
+
+        return {
+            type: 'ProcedureDeclaration',
+            name,
+            params,
+            body,
+            line: procToken.line,
+            column: procToken.column
+        };
     }
 
     parseFunctionDeclaration() {
-        // Implementation of parseFunctionDeclaration method
+        // function <ident> ( <param-list> ) : <tipo> ; <bloco> ;
+        const funcToken = this.peek();
+        if (!funcToken || funcToken.type !== 'KEYWORD' || funcToken.value !== 'function') {
+            throw new Error(`Esperado 'function' no início da declaração de função, encontrado: ${funcToken ? funcToken.value : 'EOF'} (linha ${funcToken?.line}, coluna ${funcToken?.column})`);
+        }
+        this.advance();
+
+        const name = this.parseIdent();
+
+        let params = [];
+        const openParen = this.peek();
+        if (!openParen || openParen.type !== 'PUNCTUATION' || openParen.value !== '(') {
+            throw new Error(`Esperado '(' após nome da função, encontrado: ${openParen ? openParen.value : 'EOF'} (linha ${openParen?.line}, coluna ${openParen?.column})`);
+        }
+        this.advance();
+        if (this.peek() && (this.peek().type !== 'PUNCTUATION' || this.peek().value !== ')')) {
+            params = this.parseParamList();
+        }
+        const closeParen = this.peek();
+        if (!closeParen || closeParen.type !== 'PUNCTUATION' || closeParen.value !== ')') {
+            throw new Error(`Esperado ')' após lista de parâmetros, encontrado: ${closeParen ? closeParen.value : 'EOF'} (linha ${closeParen?.line}, coluna ${closeParen?.column})`);
+        }
+        this.advance();
+
+        const colon = this.peek();
+        if (!colon || colon.type !== 'PUNCTUATION' || colon.value !== ':') {
+            throw new Error(`Esperado ':' após ')', encontrado: ${colon ? colon.value : 'EOF'} (linha ${colon?.line}, coluna ${colon?.column})`);
+        }
+        this.advance();
+        const returnType = this.parseType();
+
+        const semicolon = this.peek();
+        if (!semicolon || semicolon.type !== 'PUNCTUATION' || semicolon.value !== ';') {
+            throw new Error(`Esperado ';' após tipo de retorno, encontrado: ${semicolon ? semicolon.value : 'EOF'} (linha ${semicolon?.line}, coluna ${semicolon?.column})`);
+        }
+        this.advance();
+
+        const body = this.parseBlock();
+
+        const endSemicolon = this.peek();
+        if (!endSemicolon || endSemicolon.type !== 'PUNCTUATION' || endSemicolon.value !== ';') {
+            throw new Error(`Esperado ';' após 'end' da função, encontrado: ${endSemicolon ? endSemicolon.value : 'EOF'} (linha ${endSemicolon?.line}, coluna ${endSemicolon?.column})`);
+        }
+        this.advance();
+
+        return {
+            type: 'FunctionDeclaration',
+            name,
+            params,
+            returnType: returnType.value,
+            body,
+            line: funcToken.line,
+            column: funcToken.column
+        };
     }
 
     parseParamList() {
-        // <param-list> ::= <param> { ',' <param> }
+        // <param-list> ::= <param> { ';' <param> }
         const params = [];
         params.push(this.parseParam());
-        while (this.peek() && this.peek().type === 'PUNCTUATION' && this.peek().value === ',') {
-            this.advance(); // consome a vírgula
+        while (this.peek() && this.peek().type === 'PUNCTUATION' && this.peek().value === ';') {
+            this.advance(); 
             params.push(this.parseParam());
         }
         return params;

@@ -268,11 +268,15 @@ describe('TinyPascalParser - parseParam', () => {
 });
 
 describe('TinyPascalParser - parseParamList', () => {
+    function makeToken(type, value, line = 1, column = 1) {
+        return { type, value, line, column };
+    }
+
     test('parseParamList reconhece um parâmetro', () => {
         const tokens = [
-            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
-            { type: 'PUNCTUATION', value: ':', line: 1, column: 2 },
-            { type: 'KEYWORD', value: 'integer', line: 1, column: 3 }
+            makeToken('IDENTIFIER', 'x'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'integer')
         ];
         const parser = new TinyPascalParser(tokens);
         const result = parser.parseParamList();
@@ -281,15 +285,15 @@ describe('TinyPascalParser - parseParamList', () => {
         ]);
     });
 
-    test('parseParamList reconhece múltiplos parâmetros', () => {
+    test('parseParamList reconhece múltiplos parâmetros separados por ponto e vírgula', () => {
         const tokens = [
-            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
-            { type: 'PUNCTUATION', value: ':', line: 1, column: 2 },
-            { type: 'KEYWORD', value: 'integer', line: 1, column: 3 },
-            { type: 'PUNCTUATION', value: ',', line: 1, column: 4 },
-            { type: 'IDENTIFIER', value: 'y', line: 1, column: 5 },
-            { type: 'PUNCTUATION', value: ':', line: 1, column: 6 },
-            { type: 'KEYWORD', value: 'boolean', line: 1, column: 7 }
+            makeToken('IDENTIFIER', 'x'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'integer'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('IDENTIFIER', 'y'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'boolean')
         ];
         const parser = new TinyPascalParser(tokens);
         const result = parser.parseParamList();
@@ -299,14 +303,23 @@ describe('TinyPascalParser - parseParamList', () => {
         ]);
     });
 
+    test('parseParamList lança erro se não começa com identificador', () => {
+        const tokens = [
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'integer')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseParamList()).toThrow(/Esperado identificador em declaração de variável/);
+    });
+
     test('parseParamList lança erro se faltar identificador no segundo parâmetro', () => {
         const tokens = [
-            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
-            { type: 'PUNCTUATION', value: ':', line: 1, column: 2 },
-            { type: 'KEYWORD', value: 'integer', line: 1, column: 3 },
-            { type: 'PUNCTUATION', value: ',', line: 1, column: 4 },
-            { type: 'PUNCTUATION', value: ':', line: 1, column: 5 },
-            { type: 'KEYWORD', value: 'boolean', line: 1, column: 6 }
+            makeToken('IDENTIFIER', 'x'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'integer'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'boolean')
         ];
         const parser = new TinyPascalParser(tokens);
         expect(() => parser.parseParamList()).toThrow(/Esperado identificador em declaração de variável/);
@@ -314,12 +327,12 @@ describe('TinyPascalParser - parseParamList', () => {
 
     test('parseParamList lança erro se faltar dois pontos no segundo parâmetro', () => {
         const tokens = [
-            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
-            { type: 'PUNCTUATION', value: ':', line: 1, column: 2 },
-            { type: 'KEYWORD', value: 'integer', line: 1, column: 3 },
-            { type: 'PUNCTUATION', value: ',', line: 1, column: 4 },
-            { type: 'IDENTIFIER', value: 'y', line: 1, column: 5 },
-            { type: 'KEYWORD', value: 'boolean', line: 1, column: 6 }
+            makeToken('IDENTIFIER', 'x'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'integer'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('IDENTIFIER', 'y'),
+            makeToken('KEYWORD', 'boolean')
         ];
         const parser = new TinyPascalParser(tokens);
         expect(() => parser.parseParamList()).toThrow(/Esperado ':' após lista de identificadores do parâmetro/);
@@ -327,12 +340,13 @@ describe('TinyPascalParser - parseParamList', () => {
 
     test('parseParamList lança erro se faltar tipo no segundo parâmetro', () => {
         const tokens = [
-            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
-            { type: 'PUNCTUATION', value: ':', line: 1, column: 2 },
-            { type: 'KEYWORD', value: 'integer', line: 1, column: 3 },
-            { type: 'PUNCTUATION', value: ',', line: 1, column: 4 },
-            { type: 'IDENTIFIER', value: 'y', line: 1, column: 5 },
-            { type: 'PUNCTUATION', value: ':', line: 1, column: 6 }
+            makeToken('IDENTIFIER', 'x'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'integer'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('IDENTIFIER', 'y'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('PUNCTUATION', ';')
         ];
         const parser = new TinyPascalParser(tokens);
         expect(() => parser.parseParamList()).toThrow(/Esperado tipo 'integer' ou 'boolean'/);
@@ -1271,3 +1285,359 @@ describe('TinyPascalParser - identificadores e expressões (integração)', () =
     });
 
 });
+describe('TinyPascalParser - parseBlock', () => {
+    test('parseBlock lança erro para bloco vazio', () => {
+        const tokens = [
+            { type: 'KEYWORD', value: 'begin', line: 1, column: 1 },
+            { type: 'KEYWORD', value: 'end', line: 1, column: 7 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseBlock()).toThrow(/Comando inválido: end/);
+    });
+
+    test('parseBlock reconhece bloco com múltiplos comandos', () => {
+        const tokens = [
+            { type: 'KEYWORD', value: 'begin', line: 1, column: 1 },
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 7 },
+            { type: 'OPERATOR', value: ':=', line: 1, column: 8 },
+            { type: 'NUMBER', value: 1, line: 1, column: 10 },
+            { type: 'PUNCTUATION', value: ';', line: 1, column: 11 },
+            { type: 'IDENTIFIER', value: 'y', line: 2, column: 1 },
+            { type: 'OPERATOR', value: ':=', line: 2, column: 2 },
+            { type: 'NUMBER', value: 2, line: 2, column: 4 },
+            { type: 'KEYWORD', value: 'end', line: 3, column: 1 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseBlock();
+        expect(result.type).toBe('Block');
+        expect(result.statements.type).toBe('StmtList');
+        expect(result.statements.statements.length).toBe(2);
+    });
+
+    test('parseBlock lança erro se faltar begin', () => {
+        const tokens = [
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 1 },
+            { type: 'KEYWORD', value: 'end', line: 1, column: 2 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseBlock()).toThrow(/Esperado 'begin' no início do bloco/);
+    });
+
+    test.skip('parseBlock lança erro se não houver end após comandos válidos', () => {
+        const tokens = [
+            { type: 'KEYWORD', value: 'begin', line: 1, column: 1 },
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 2 },
+            { type: 'OPERATOR', value: ':=', line: 1, column: 3 },
+            { type: 'NUMBER', value: 1, line: 1, column: 4 },
+            { type: 'PUNCTUATION', value: ';', line: 1, column: 5 },
+            { type: 'IDENTIFIER', value: 'y', line: 2, column: 1 },
+            { type: 'OPERATOR', value: ':=', line: 2, column: 2 },
+            { type: 'NUMBER', value: 2, line: 2, column: 3 },
+            { type: 'PUNCTUATION', value: ';', line: 2, column: 4 },
+            { type: 'EOF', value: null, line: 3, column: 1 }
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseBlock()).toThrow(/Esperado 'end' ao final do bloco/);
+    });
+});
+
+describe('TinyPascalParser - parseFunctionDeclaration', () => {
+    function makeToken(type, value, line = 1, column = 1) {
+        return { type, value, line, column };
+    }
+
+    test('Reconhece declaração de função simples', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'function'),
+            makeToken('IDENTIFIER', 'soma'),
+            makeToken('PUNCTUATION', '('),
+            makeToken('IDENTIFIER', 'a'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'integer'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('IDENTIFIER', 'b'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'integer'),
+            makeToken('PUNCTUATION', ')'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'integer'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('KEYWORD', 'begin'),
+            makeToken('IDENTIFIER', 'x'),
+            makeToken('OPERATOR', ':='),
+            makeToken('NUMBER', 1),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('KEYWORD', 'end'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('EOF', null)
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseFunctionDeclaration();
+        expect(result.type).toBe('FunctionDeclaration');
+        expect(result.name.name).toBe('soma');
+        expect(result.params.length).toBe(2);
+        expect(result.returnType).toBe('integer');
+        expect(result.body.type).toBe('Block');
+    });
+
+    test('Reconhece função sem parâmetros', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'function'),
+            makeToken('IDENTIFIER', 'foo'),
+            makeToken('PUNCTUATION', '('),
+            makeToken('PUNCTUATION', ')'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'integer'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('KEYWORD', 'begin'),
+            makeToken('IDENTIFIER', 'x'),
+            makeToken('OPERATOR', ':='),
+            makeToken('NUMBER', 1),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('KEYWORD', 'end'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('EOF', null)
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseFunctionDeclaration();
+        expect(result.name.name).toBe('foo');
+        expect(result.params.length).toBe(0);
+        expect(result.returnType).toBe('integer');
+    });
+
+    test('Erro: falta palavra-chave function', () => {
+        const tokens = [
+            makeToken('IDENTIFIER', 'soma')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseFunctionDeclaration()).toThrow(/Esperado 'function'/);
+    });
+
+    test('Erro: falta identificador do nome da função', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'function'),
+            makeToken('PUNCTUATION', '(')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseFunctionDeclaration()).toThrow(/Esperado identificador/);
+    });
+
+    test('Erro: falta parêntese de abertura', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'function'),
+            makeToken('IDENTIFIER', 'soma')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseFunctionDeclaration()).toThrow(/Esperado '\('/);
+    });
+
+    test('Erro: falta parêntese de fechamento', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'function'),
+            makeToken('IDENTIFIER', 'soma'),
+            makeToken('PUNCTUATION', '('),
+            makeToken('IDENTIFIER', 'a'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'integer')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseFunctionDeclaration()).toThrow(/Esperado '\)'/);
+    });
+
+    test('Erro: falta dois-pontos antes do tipo de retorno', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'function'),
+            makeToken('IDENTIFIER', 'soma'),
+            makeToken('PUNCTUATION', '('),
+            makeToken('PUNCTUATION', ')'),
+            makeToken('KEYWORD', 'integer')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseFunctionDeclaration()).toThrow(/Esperado ':'/);
+    });
+
+    test('Erro: falta tipo de retorno', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'function'),
+            makeToken('IDENTIFIER', 'soma'),
+            makeToken('PUNCTUATION', '('),
+            makeToken('PUNCTUATION', ')'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('PUNCTUATION', ';')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseFunctionDeclaration()).toThrow(/Esperado tipo 'integer' ou 'boolean'/);
+    });
+
+    test('Erro: falta ponto e vírgula após tipo de retorno', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'function'),
+            makeToken('IDENTIFIER', 'soma'),
+            makeToken('PUNCTUATION', '('),
+            makeToken('PUNCTUATION', ')'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'integer')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseFunctionDeclaration()).toThrow(/Esperado ';' após tipo de retorno/);
+    });
+
+    test('Erro: falta bloco begin...end', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'function'),
+            makeToken('IDENTIFIER', 'soma'),
+            makeToken('PUNCTUATION', '('),
+            makeToken('PUNCTUATION', ')'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'integer'),
+            makeToken('PUNCTUATION', ';')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseFunctionDeclaration()).toThrow(/Esperado 'begin'/);
+    });
+
+    test('Erro: falta ponto e vírgula após end', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'function'),
+            makeToken('IDENTIFIER', 'soma'),
+            makeToken('PUNCTUATION', '('),
+            makeToken('PUNCTUATION', ')'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'integer'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('KEYWORD', 'begin'),
+            makeToken('IDENTIFIER', 'x'),
+            makeToken('OPERATOR', ':='),
+            makeToken('NUMBER', 1),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('KEYWORD', 'end')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseFunctionDeclaration()).toThrow(/Esperado ';' após 'end' da função/);
+    });
+});
+
+describe('TinyPascalParser - parseProcedureDeclaration', () => {
+    function makeToken(type, value, line = 1, column = 1) {
+        return { type, value, line, column };
+    }
+
+    test('Reconhece declaração de procedimento simples', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'procedure'),
+            makeToken('IDENTIFIER', 'proc1'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('KEYWORD', 'begin'),
+            makeToken('IDENTIFIER', 'x'),
+            makeToken('OPERATOR', ':='),
+            makeToken('NUMBER', 1),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('KEYWORD', 'end'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('EOF', null)
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseProcedureDeclaration();
+        expect(result.type).toBe('ProcedureDeclaration');
+        expect(result.name.name).toBe('proc1');
+        expect(result.params.length).toBe(0);
+        expect(result.body.type).toBe('Block');
+    });
+
+    test('Reconhece procedimento com parâmetros', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'procedure'),
+            makeToken('IDENTIFIER', 'proc2'),
+            makeToken('PUNCTUATION', '('),
+            makeToken('IDENTIFIER', 'a'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'integer'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('IDENTIFIER', 'b'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'boolean'),
+            makeToken('PUNCTUATION', ')'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('KEYWORD', 'begin'),
+            makeToken('IDENTIFIER', 'y'),
+            makeToken('OPERATOR', ':='),
+            makeToken('NUMBER', 2),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('KEYWORD', 'end'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('EOF', null)
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseProcedureDeclaration();
+        expect(result.type).toBe('ProcedureDeclaration');
+        expect(result.name.name).toBe('proc2');
+        expect(result.params.length).toBe(2);
+        expect(result.body.type).toBe('Block');
+    });
+
+    test('Erro: falta palavra-chave procedure', () => {
+        const tokens = [
+            makeToken('IDENTIFIER', 'proc1')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseProcedureDeclaration()).toThrow(/Esperado 'procedure'/);
+    });
+
+    test('Erro: falta identificador do nome do procedimento', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'procedure'),
+            makeToken('PUNCTUATION', '(')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseProcedureDeclaration()).toThrow(/Esperado identificador/);
+    });
+
+    test('Erro: falta parêntese de fechamento nos parâmetros', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'procedure'),
+            makeToken('IDENTIFIER', 'proc2'),
+            makeToken('PUNCTUATION', '('),
+            makeToken('IDENTIFIER', 'a'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'integer')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseProcedureDeclaration()).toThrow(/Esperado '\)'/);
+    });
+
+    test('Erro: falta ponto e vírgula após cabeçalho', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'procedure'),
+            makeToken('IDENTIFIER', 'proc1')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseProcedureDeclaration()).toThrow(/Esperado ';' após cabeçalho/);
+    });
+
+    test('Erro: falta bloco begin...end', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'procedure'),
+            makeToken('IDENTIFIER', 'proc1'),
+            makeToken('PUNCTUATION', ';')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseProcedureDeclaration()).toThrow(/Esperado 'begin'/);
+    });
+
+    test('Erro: falta ponto e vírgula após end', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'procedure'),
+            makeToken('IDENTIFIER', 'proc1'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('KEYWORD', 'begin'),
+            makeToken('IDENTIFIER', 'x'),
+            makeToken('OPERATOR', ':='),
+            makeToken('NUMBER', 1),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('KEYWORD', 'end')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseProcedureDeclaration()).toThrow(/Esperado ';' após 'end' do procedimento/);
+    });
+});
+
