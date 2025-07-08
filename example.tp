@@ -17,6 +17,7 @@ end;
 function Soma(a: integer; b: integer): integer;
 begin
     x := a + b;
+    return x
 end;
 
 begin
@@ -32,12 +33,12 @@ end;
     flag := true;
     if x < 10 then
     begin
-        y := x + y;
+        y := x + y
     end
     else
     begin
-        y := 0;
+        y := 0
     end;
     Soma(x, y);
-    MostraSoma(x, y);
+    MostraSoma(x, y)
 end.

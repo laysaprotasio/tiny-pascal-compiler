@@ -449,9 +449,7 @@ class TinyPascalParser {
         stmts.push(this.parseStmt());
         while (this.peek() && this.peek().type === 'PUNCTUATION' && this.peek().value === ';') {
             this.advance(); 
-            if (this.peek() && !(this.peek().type === 'KEYWORD' && this.peek().value === 'end')) {
-                stmts.push(this.parseStmt());
-            }
+            stmts.push(this.parseStmt());
         }
         return { type: 'StmtList', statements: stmts };
     }
