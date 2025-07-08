@@ -1,33 +1,27 @@
-var
-  x, y: integer;
-  msg: boolean;
+var x, y: integer; flag: boolean;
 
-function soma(a: integer; b: integer): integer;
+procedure MostraSoma(a: integer; b: integer);
 begin
-  return a + b;
+    x := a + b;
+    if x > 10 then
+        y := x
+    else
+        y := 0;
 end;
 
-procedure imprimeResultado;
+function Soma(a: integer; b: integer): integer;
 begin
-  writeln(x);
+    x := a + b;
 end;
 
 begin
-  x := 10;
-  y := 20;
-  msg := true;
-  if x < y then
-    x := soma(x, y)
-  else
-    x := 0;
-  while x > 0 do
-  begin
-    x := x - 1;
-    if x = 5 then
-      continue;
-    if x = 2 then
-      break;
-    writeln(x);
-  end;
-  imprimeResultado;
+    x := 5;
+    y := 2;
+    flag := true;
+    if x < 10 then
+        y := x + y
+    else
+        y := 0;
+    Soma(x, y);
+    MostraSoma(x, y);
 end.

@@ -20,11 +20,36 @@ class TinyPascalParser {
 
     //Bloco principal do programa
     parseProgram() {
-
+        // <programa> ::= <declarações-globais> <bloco> '.'
+        const globals = this.parseGlobalDeclarations();
+        const block = this.parseBlock();
+        const dot = this.peek();
+        if (!dot || dot.type !== 'PUNCTUATION' || dot.value !== '.') {
+            throw new Error(`Esperado '.' ao final do programa, encontrado: ${dot ? dot.value : 'EOF'} (linha ${dot?.line}, coluna ${dot?.column})`);
+        }
+        this.advance();
+        return {
+            type: 'Program',
+            declarations: globals,
+            main: block
+        };
     }
 
     parseGlobalDeclarations() {
+        // <declarações-globais> ::= [ 'var' { <decl-var> } ] { <decl-proc-func> }
+        const declarations = [];
 
+        if (this.peek() && this.peek().type === 'KEYWORD' && this.peek().value === 'var') {
+            this.advance(); // consome 'var'
+            while (this.peek() && this.peek().type === 'IDENTIFIER') {
+                declarations.push(this.parseVarDeclarationSemVar());
+            }
+        }
+
+        while (this.peek() && this.peek().type === 'KEYWORD' && (this.peek().value === 'procedure' || this.peek().value === 'function')) {
+            declarations.push(this.parseProcFuncDeclaration());
+        }
+        return declarations;
     }
 
     parseBlock() {
@@ -51,12 +76,7 @@ class TinyPascalParser {
     }
 
     //Declarações
-    parseVarDeclaration() {
-        const varToken = this.peek();
-        if (!varToken || varToken.type !== 'KEYWORD' || varToken.value !== 'var') {
-            throw new Error(`Esperado 'var' no início da declaração de variável, encontrado: ${varToken ? varToken.value : 'EOF'} (linha ${varToken?.line}, coluna ${varToken?.column})`);
-        }
-        this.advance();
+    parseVarDeclarationSemVar() {
         const idents = this.parseVarList();
         const colon = this.peek();
         if (!colon || colon.type !== 'PUNCTUATION' || colon.value !== ':') {
@@ -85,7 +105,7 @@ class TinyPascalParser {
         idents.push(token.value);
         this.advance();
         while (this.peek() && this.peek().type === 'PUNCTUATION' && this.peek().value === ',') {
-            this.advance(); // consome a vírgula
+            this.advance(); 
             token = this.peek();
             if (!token || token.type !== 'IDENTIFIER') {
                 throw new Error(`Esperado identificador após ',' em declaração de variável, encontrado: ${token ? token.value : 'EOF'} (linha ${token?.line}, coluna ${token?.column})`);
@@ -107,7 +127,15 @@ class TinyPascalParser {
     }
 
     parseProcFuncDeclaration() {
-        // Implementation of parseProcFuncDeclaration method
+        // <decl-proc-func> ::= <decl-procedimento> | <decl-funcao>
+        const token = this.peek();
+        if (token && token.type === 'KEYWORD' && token.value === 'procedure') {
+            return this.parseProcedureDeclaration();
+        } else if (token && token.type === 'KEYWORD' && token.value === 'function') {
+            return this.parseFunctionDeclaration();
+        } else {
+            throw new Error(`Esperado 'procedure' ou 'function' no início da declaração, encontrado: ${token ? token.value : 'EOF'} (linha ${token?.line}, coluna ${token?.column})`);
+        }
     }
 
     parseProcedureDeclaration() {
@@ -626,6 +654,16 @@ class TinyPascalParser {
         };
     }
 
+
+    // Mantém parseVarDeclaration para compatibilidade, mas só consome 'var' e chama parseVarDeclarationSemVar
+    parseVarDeclaration() {
+        const varToken = this.peek();
+        if (!varToken || varToken.type !== 'KEYWORD' || varToken.value !== 'var') {
+            throw new Error(`Esperado 'var' no início da declaração de variável, encontrado: ${varToken ? varToken.value : 'EOF'} (linha ${varToken?.line}, coluna ${varToken?.column})`);
+        }
+        this.advance();
+        return this.parseVarDeclarationSemVar();
+    }
 }
 
 module.exports = TinyPascalParser;

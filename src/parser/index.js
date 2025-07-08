@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const TinyPascalLexer = require('../lexer/lexer');
 const TinyPascalParser = require('./parser');
 
@@ -12,6 +14,7 @@ const exampleCode = `
     x := 0;
 
   imprimeResultado();
+<<<<<<< HEAD
 
   x := 3;
 
@@ -29,11 +32,12 @@ const exampleCode = `
   return true;
   return soma(x,y)
 
+=======
+>>>>>>> d6b1186f33d134b5c99dc037e58e45fcff97f785
 `;
 
 const lexer = new TinyPascalLexer(exampleCode);
 const tokens = lexer.tokenize();
-console.log(tokens);
 
 const parser = new TinyPascalParser(tokens);
 const result = parser.parseStmtList();
