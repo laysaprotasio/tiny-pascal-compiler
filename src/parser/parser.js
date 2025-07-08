@@ -493,8 +493,6 @@ class TinyPascalParser {
 
         const next = this.peek();
 
-        //<assign-or-call> ::= <ident> <rest-id>
-        // <rest-id> ::= ':=' <expr> | ...
         if (next && next.type === 'OPERATOR' && next.value === ':=') {
             this.advance(); 
             const expr = this.parseExpr();
@@ -587,18 +585,47 @@ class TinyPascalParser {
         };
     }
 
-
-    parseBreakStmt(){
-
+    parseBreakStmt() {
+        const token = this.peek();
+        if (!token || token.type !== 'KEYWORD' || token.value !== 'break') {
+            throw new Error(`Esperado 'break', encontrado: ${token ? token.value : 'EOF'} (linha ${token?.line}, coluna ${token?.column})`);
+        }
+        this.advance();
+        return {
+            type: 'BreakStmt',
+            line: token.line,
+            column: token.column
+        };
     }
 
-    parseContinueStmt(){
-
+    parseContinueStmt() {
+        const token = this.peek();
+        if (!token || token.type !== 'KEYWORD' || token.value !== 'continue') {
+            throw new Error(`Esperado 'continue', encontrado: ${token ? token.value : 'EOF'} (linha ${token?.line}, coluna ${token?.column})`);
+        }
+        this.advance();
+        return {
+            type: 'ContinueStmt',
+            line: token.line,
+            column: token.column
+        };
     }
 
-    parseReturnStmt(){
-
+    parseReturnStmt() {
+        const token = this.peek();
+        if (!token || token.type !== 'KEYWORD' || token.value !== 'return') {
+            throw new Error(`Esperado 'return', encontrado: ${token ? token.value : 'EOF'} (linha ${token?.line}, coluna ${token?.column})`);
+        }
+        this.advance();
+        const expr = this.parseExpr();
+        return {
+            type: 'ReturnStmt',
+            value: expr,
+            line: token.line,
+            column: token.column
+        };
     }
+
 }
 
 module.exports = TinyPascalParser;
