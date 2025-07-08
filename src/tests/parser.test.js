@@ -1462,3 +1462,127 @@ describe('TinyPascalParser - parseFunctionDeclaration', () => {
     });
 });
 
+describe('TinyPascalParser - parseProcedureDeclaration', () => {
+    function makeToken(type, value, line = 1, column = 1) {
+        return { type, value, line, column };
+    }
+
+    test('Reconhece declaração de procedimento simples', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'procedure'),
+            makeToken('IDENTIFIER', 'proc1'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('KEYWORD', 'begin'),
+            makeToken('IDENTIFIER', 'x'),
+            makeToken('OPERATOR', ':='),
+            makeToken('NUMBER', 1),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('KEYWORD', 'end'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('EOF', null)
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseProcedureDeclaration();
+        expect(result.type).toBe('ProcedureDeclaration');
+        expect(result.name.name).toBe('proc1');
+        expect(result.params.length).toBe(0);
+        expect(result.body.type).toBe('Block');
+    });
+
+    test('Reconhece procedimento com parâmetros', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'procedure'),
+            makeToken('IDENTIFIER', 'proc2'),
+            makeToken('PUNCTUATION', '('),
+            makeToken('IDENTIFIER', 'a'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'integer'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('IDENTIFIER', 'b'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'boolean'),
+            makeToken('PUNCTUATION', ')'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('KEYWORD', 'begin'),
+            makeToken('IDENTIFIER', 'y'),
+            makeToken('OPERATOR', ':='),
+            makeToken('NUMBER', 2),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('KEYWORD', 'end'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('EOF', null)
+        ];
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseProcedureDeclaration();
+        expect(result.type).toBe('ProcedureDeclaration');
+        expect(result.name.name).toBe('proc2');
+        expect(result.params.length).toBe(2);
+        expect(result.body.type).toBe('Block');
+    });
+
+    test('Erro: falta palavra-chave procedure', () => {
+        const tokens = [
+            makeToken('IDENTIFIER', 'proc1')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseProcedureDeclaration()).toThrow(/Esperado 'procedure'/);
+    });
+
+    test('Erro: falta identificador do nome do procedimento', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'procedure'),
+            makeToken('PUNCTUATION', '(')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseProcedureDeclaration()).toThrow(/Esperado identificador/);
+    });
+
+    test('Erro: falta parêntese de fechamento nos parâmetros', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'procedure'),
+            makeToken('IDENTIFIER', 'proc2'),
+            makeToken('PUNCTUATION', '('),
+            makeToken('IDENTIFIER', 'a'),
+            makeToken('PUNCTUATION', ':'),
+            makeToken('KEYWORD', 'integer')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseProcedureDeclaration()).toThrow(/Esperado '\)'/);
+    });
+
+    test('Erro: falta ponto e vírgula após cabeçalho', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'procedure'),
+            makeToken('IDENTIFIER', 'proc1')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseProcedureDeclaration()).toThrow(/Esperado ';' após cabeçalho/);
+    });
+
+    test('Erro: falta bloco begin...end', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'procedure'),
+            makeToken('IDENTIFIER', 'proc1'),
+            makeToken('PUNCTUATION', ';')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseProcedureDeclaration()).toThrow(/Esperado 'begin'/);
+    });
+
+    test('Erro: falta ponto e vírgula após end', () => {
+        const tokens = [
+            makeToken('KEYWORD', 'procedure'),
+            makeToken('IDENTIFIER', 'proc1'),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('KEYWORD', 'begin'),
+            makeToken('IDENTIFIER', 'x'),
+            makeToken('OPERATOR', ':='),
+            makeToken('NUMBER', 1),
+            makeToken('PUNCTUATION', ';'),
+            makeToken('KEYWORD', 'end')
+        ];
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseProcedureDeclaration()).toThrow(/Esperado ';' após 'end' do procedimento/);
+    });
+});
+

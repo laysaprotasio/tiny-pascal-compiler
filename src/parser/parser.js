@@ -111,7 +111,51 @@ class TinyPascalParser {
     }
 
     parseProcedureDeclaration() {
-        // Implementation of parseProcedureDeclaration method
+        // procedure <ident> [ '(' <param-list> ')' ] ';' <bloco> ';'
+        const procToken = this.peek();
+        if (!procToken || procToken.type !== 'KEYWORD' || procToken.value !== 'procedure') {
+            throw new Error(`Esperado 'procedure' no início da declaração de procedimento, encontrado: ${procToken ? procToken.value : 'EOF'} (linha ${procToken?.line}, coluna ${procToken?.column})`);
+        }
+        this.advance();
+
+        const name = this.parseIdent();
+
+        let params = [];
+        const openParen = this.peek();
+        if (openParen && openParen.type === 'PUNCTUATION' && openParen.value === '(') {
+            this.advance();
+            if (this.peek() && (this.peek().type !== 'PUNCTUATION' || this.peek().value !== ')')) {
+                params = this.parseParamList();
+            }
+            const closeParen = this.peek();
+            if (!closeParen || closeParen.type !== 'PUNCTUATION' || closeParen.value !== ')') {
+                throw new Error(`Esperado ')' após lista de parâmetros, encontrado: ${closeParen ? closeParen.value : 'EOF'} (linha ${closeParen?.line}, coluna ${closeParen?.column})`);
+            }
+            this.advance();
+        }
+
+        const semicolon = this.peek();
+        if (!semicolon || semicolon.type !== 'PUNCTUATION' || semicolon.value !== ';') {
+            throw new Error(`Esperado ';' após cabeçalho do procedimento, encontrado: ${semicolon ? semicolon.value : 'EOF'} (linha ${semicolon?.line}, coluna ${semicolon?.column})`);
+        }
+        this.advance();
+
+        const body = this.parseBlock();
+
+        const endSemicolon = this.peek();
+        if (!endSemicolon || endSemicolon.type !== 'PUNCTUATION' || endSemicolon.value !== ';') {
+            throw new Error(`Esperado ';' após 'end' do procedimento, encontrado: ${endSemicolon ? endSemicolon.value : 'EOF'} (linha ${endSemicolon?.line}, coluna ${endSemicolon?.column})`);
+        }
+        this.advance();
+
+        return {
+            type: 'ProcedureDeclaration',
+            name,
+            params,
+            body,
+            line: procToken.line,
+            column: procToken.column
+        };
     }
 
     parseFunctionDeclaration() {
