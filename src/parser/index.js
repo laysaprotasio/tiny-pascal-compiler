@@ -10,10 +10,15 @@ const exampleCode = `
   else
     x := 0;
   imprimeResultado();
+  x := 3;               
+  while x > 0 do
+    x := x - 1;
+  writeln(x)
 `;
 
 const lexer = new TinyPascalLexer(exampleCode);
 const tokens = lexer.tokenize();
+console.log(tokens);
 
 const parser = new TinyPascalParser(tokens);
 const result = parser.parseStmtList();
