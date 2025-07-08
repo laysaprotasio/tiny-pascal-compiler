@@ -115,15 +115,68 @@ class TinyPascalParser {
     }
 
     parseFunctionDeclaration() {
-        // Implementation of parseFunctionDeclaration method
+        // function <ident> ( <param-list> ) : <tipo> ; <bloco> ;
+        const funcToken = this.peek();
+        if (!funcToken || funcToken.type !== 'KEYWORD' || funcToken.value !== 'function') {
+            throw new Error(`Esperado 'function' no início da declaração de função, encontrado: ${funcToken ? funcToken.value : 'EOF'} (linha ${funcToken?.line}, coluna ${funcToken?.column})`);
+        }
+        this.advance();
+
+        const name = this.parseIdent();
+
+        let params = [];
+        const openParen = this.peek();
+        if (!openParen || openParen.type !== 'PUNCTUATION' || openParen.value !== '(') {
+            throw new Error(`Esperado '(' após nome da função, encontrado: ${openParen ? openParen.value : 'EOF'} (linha ${openParen?.line}, coluna ${openParen?.column})`);
+        }
+        this.advance();
+        if (this.peek() && (this.peek().type !== 'PUNCTUATION' || this.peek().value !== ')')) {
+            params = this.parseParamList();
+        }
+        const closeParen = this.peek();
+        if (!closeParen || closeParen.type !== 'PUNCTUATION' || closeParen.value !== ')') {
+            throw new Error(`Esperado ')' após lista de parâmetros, encontrado: ${closeParen ? closeParen.value : 'EOF'} (linha ${closeParen?.line}, coluna ${closeParen?.column})`);
+        }
+        this.advance();
+
+        const colon = this.peek();
+        if (!colon || colon.type !== 'PUNCTUATION' || colon.value !== ':') {
+            throw new Error(`Esperado ':' após ')', encontrado: ${colon ? colon.value : 'EOF'} (linha ${colon?.line}, coluna ${colon?.column})`);
+        }
+        this.advance();
+        const returnType = this.parseType();
+
+        const semicolon = this.peek();
+        if (!semicolon || semicolon.type !== 'PUNCTUATION' || semicolon.value !== ';') {
+            throw new Error(`Esperado ';' após tipo de retorno, encontrado: ${semicolon ? semicolon.value : 'EOF'} (linha ${semicolon?.line}, coluna ${semicolon?.column})`);
+        }
+        this.advance();
+
+        const body = this.parseBlock();
+
+        const endSemicolon = this.peek();
+        if (!endSemicolon || endSemicolon.type !== 'PUNCTUATION' || endSemicolon.value !== ';') {
+            throw new Error(`Esperado ';' após 'end' da função, encontrado: ${endSemicolon ? endSemicolon.value : 'EOF'} (linha ${endSemicolon?.line}, coluna ${endSemicolon?.column})`);
+        }
+        this.advance();
+
+        return {
+            type: 'FunctionDeclaration',
+            name,
+            params,
+            returnType: returnType.value,
+            body,
+            line: funcToken.line,
+            column: funcToken.column
+        };
     }
 
     parseParamList() {
-        // <param-list> ::= <param> { ',' <param> }
+        // <param-list> ::= <param> { ';' <param> }
         const params = [];
         params.push(this.parseParam());
-        while (this.peek() && this.peek().type === 'PUNCTUATION' && this.peek().value === ',') {
-            this.advance(); // consome a vírgula
+        while (this.peek() && this.peek().type === 'PUNCTUATION' && this.peek().value === ';') {
+            this.advance(); 
             params.push(this.parseParam());
         }
         return params;
@@ -187,15 +240,15 @@ class TinyPascalParser {
         if (!token) {
             throw new Error('Esperado fator, encontrado: EOF');
         }
-        // <ident>
+      
         if (token.type === 'IDENTIFIER') {
             return this.parseIdent();
         }
-        // <number>
+      
         if (token.type === 'NUMBER') {
             return this.parseNumber();
         }
-        // '(' <expr> ')'
+      
         if (token.type === 'PUNCTUATION' && token.value === '(') {
             this.advance();
             const expr = this.parseExpr();
@@ -206,12 +259,12 @@ class TinyPascalParser {
             this.advance();
             return { type: 'ParenExpr', expr };
         }
-        // true | false
+        
         if (token.type === 'KEYWORD' && (token.value === 'true' || token.value === 'false')) {
             this.advance();
             return { type: 'Boolean', value: token.value === 'true', line: token.line, column: token.column };
         }
-        // not <factor>
+       
         if (token.type === 'KEYWORD' && token.value === 'not') {
             this.advance();
             const factor = this.parseFactor();
