@@ -497,13 +497,13 @@ class TinyPascalParser {
             }
         this.advance(); 
 
-        const thenStmt = this.parseStmt();
+        const thenStmt = this.parseBlock();
 
         let elseStmt = null;
         const maybeElse = this.peek();
         if (maybeElse && maybeElse.type === 'KEYWORD' && maybeElse.value === 'else') {
             this.advance(); 
-            elseStmt = this.parseStmt();
+            elseStmt = this.parseBlock();
         }
 
         return {
@@ -572,7 +572,7 @@ class TinyPascalParser {
             }
         this.advance(); 
 
-        const doStmt = this.parseStmt();
+        const doStmt = this.parseBlock();
         return {
             type: 'WhileStmt',
             expr,

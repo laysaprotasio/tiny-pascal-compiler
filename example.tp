@@ -4,9 +4,14 @@ procedure MostraSoma(a: integer; b: integer);
 begin
     x := a + b;
     if x > 10 then
-        y := x
+    begin
+        y := x;
+        continue
+    end
     else
-        y := 0;
+    begin
+        y := 0
+    end
 end;
 
 function Soma(a: integer; b: integer): integer;
@@ -15,13 +20,24 @@ begin
 end;
 
 begin
+
+while y > 10 do
+begin
+    z := y;
+    break
+end;
+
     x := 5;
     y := 2;
     flag := true;
     if x < 10 then
-        y := x + y
+    begin
+        y := x + y;
+    end
     else
+    begin
         y := 0;
+    end;
     Soma(x, y);
     MostraSoma(x, y);
 end.
