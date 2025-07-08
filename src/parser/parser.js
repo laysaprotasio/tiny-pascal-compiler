@@ -312,16 +312,42 @@ class TinyPascalParser {
         if (!token) {
             throw new Error('Esperado fator, encontrado: EOF');
         }
-      
-        if (token.type === 'IDENTIFIER') {
-            return this.parseIdent();
+        // <ident>
+        else if (token.type === 'IDENTIFIER') {
+            let ident = this.parseIdent();
+            const next = this.peek();
+            // '(' [ <expr-list> ]')'
+            if (next && next.type === 'PUNCTUATION' && next.value === '(') {
+                this.advance(); 
+
+                let args = [];
+                const lookahead = this.peek();
+                if (lookahead && (lookahead.type !== 'PUNCTUATION' || lookahead.value !== ')')) {
+                    args = this.parseExprList();
+                }
+
+                const closing = this.peek();
+                if (!closing || closing.type !== 'PUNCTUATION' || closing.value !== ')') {
+                    throw new Error(`Esperado ')' após chamada, encontrado: ${closing ? closing.value : 'EOF'} (linha ${closing?.line}, coluna ${closing?.column})`);
+                }
+                this.advance();
+
+                return {
+                    type: 'Call',
+                    callee: ident,
+                    arguments: args,
+                    line: ident.line,
+                    column: ident.column
+                };
+            }
+            return ident;
         }
-      
-        if (token.type === 'NUMBER') {
+        // <number>
+        else if (token.type === 'NUMBER') {
             return this.parseNumber();
         }
-      
-        if (token.type === 'PUNCTUATION' && token.value === '(') {
+        // '(' <expr> ')'
+        else if (token.type === 'PUNCTUATION' && token.value === '(') {
             this.advance();
             const expr = this.parseExpr();
             const next = this.peek();
@@ -331,13 +357,13 @@ class TinyPascalParser {
             this.advance();
             return { type: 'ParenExpr', expr };
         }
-        
-        if (token.type === 'KEYWORD' && (token.value === 'true' || token.value === 'false')) {
+        // true | false
+        else if (token.type === 'KEYWORD' && (token.value === 'true' || token.value === 'false')) {
             this.advance();
             return { type: 'Boolean', value: token.value === 'true', line: token.line, column: token.column };
         }
-       
-        if (token.type === 'KEYWORD' && token.value === 'not') {
+        // not <factor>
+        else if (token.type === 'KEYWORD' && token.value === 'not') {
             this.advance();
             const factor = this.parseFactor();
             return { type: 'Not', factor };
@@ -509,7 +535,6 @@ class TinyPascalParser {
             };
         }
 
-        // '(' [ <expr-list> ]')'
         if (next && next.type === 'PUNCTUATION' && next.value === '(') {
             this.advance(); 
 
@@ -538,12 +563,58 @@ class TinyPascalParser {
     }  
 
     parseWhileStmt() {
+        const tokenWhile = this.peek();
+        this.advance(); 
 
+        const expr = this.parseExpr();
+
+        const doToken = this.peek();
+            if (!doToken || doToken.type !== 'KEYWORD' || doToken.value !== 'do') {
+                throw new Error(`Esperado 'do' após condição do while, encontrado: ${doToken ? doToken.value : 'EOF'} (linha ${doToken?.line}, coluna ${doToken?.column})`);
+            }
+        this.advance(); 
+
+        const doStmt = this.parseStmt();
+        return {
+            type: 'WhileStmt',
+            expr,
+            doBranch: doStmt,
+            line: tokenWhile.line,
+            column: tokenWhile.column
+        };
     }
 
-    parseWriteStmt(){
+    parseWriteStmt() {
+        const writeToken = this.peek(); 
+        console.log(writeToken);
+        this.advance(); 
 
+        const openParen = this.peek();
+        if (!openParen || openParen.type !== 'PUNCTUATION' || openParen.value !== '(') {
+            throw new Error(`Esperado '(' após 'writeln', encontrado: ${openParen ? openParen.value : 'EOF'} (linha ${openParen?.line}, coluna ${openParen?.column})`);
+        }
+        this.advance(); 
+
+        let args = [];
+        const lookahead = this.peek();
+        if (lookahead && (lookahead.type !== 'PUNCTUATION' || lookahead.value !== ')')) {
+            args = this.parseExprList(); 
+        }
+
+        const closing = this.peek();
+        if (!closing || closing.type !== 'PUNCTUATION' || closing.value !== ')') {
+            throw new Error(`Esperado ')' após argumentos do 'writeln', encontrado: ${closing ? closing.value : 'EOF'} (linha ${closing?.line}, coluna ${closing?.column})`);
+        }
+        this.advance(); 
+
+        return {
+            type: 'WriteStmt',
+            arguments: args,
+            line: writeToken.line,
+            column: writeToken.column
+        };
     }
+
 
     parseBreakStmt(){
 
@@ -554,7 +625,7 @@ class TinyPascalParser {
     }
 
     parseReturnStmt(){
-        
+
     }
 
     // Mantém parseVarDeclaration para compatibilidade, mas só consome 'var' e chama parseVarDeclarationSemVar

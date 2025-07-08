@@ -1228,8 +1228,63 @@ describe('TinyPascalParser - identificadores e expressões (integração)', () =
             column: 1
         }); 
     });
-});
 
+    test('parseStmt reconhece while com stmt', () => {
+        const tokens = [
+            { type: 'KEYWORD', value: 'while', line: 1, column: 1 },
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 7 },
+            { type: 'OPERATOR', value: '>', line: 1, column: 9 },
+            { type: 'NUMBER', value: '0', line: 1, column: 11 },
+            { type: 'KEYWORD', value: 'do', line: 1, column: 13 },
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 16 },
+            { type: 'OPERATOR', value: ':=', line: 1, column: 18 },
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 21 },
+            { type: 'OPERATOR', value: '-', line: 1, column: 23 },
+            { type: 'NUMBER', value: '1', line: 1, column: 25 }
+        ];
+
+        const parser = new TinyPascalParser(tokens);
+        const result = parser.parseStmt();
+
+        expect(result).toEqual({
+            type: 'WhileStmt',
+            expr: {
+                type: 'BinaryOp',
+                operator: '>',
+                left: { type: 'Identifier', name: 'x', line: 1, column: 7 },
+                right: { type: 'Number', value: '0', line: 1, column: 11 }
+            },
+            doBranch: {
+                type: 'Assign',
+                target: { type: 'Identifier', name: 'x', line: 1, column: 16 },
+                value: {
+                    type: 'BinaryOp',
+                    operator: '-',
+                    left: { type: 'Identifier', name: 'x', line: 1, column: 21 },
+                    right: { type: 'Number', value: '1', line: 1, column: 25 }
+                },
+                line: 1,
+                column: 16
+            },
+            line: 1,
+            column: 1
+        });
+    });
+
+    test('parseStmt lança erro se while estiver sem "do"', () => {
+        const tokens = [
+            { type: 'KEYWORD', value: 'while', line: 1, column: 1 },
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 7 },
+            { type: 'OPERATOR', value: '>', line: 1, column: 9 },
+            { type: 'NUMBER', value: '0', line: 1, column: 11 },
+            { type: 'IDENTIFIER', value: 'x', line: 1, column: 13 } 
+        ];
+
+        const parser = new TinyPascalParser(tokens);
+        expect(() => parser.parseStmt()).toThrow("Esperado 'do' após condição do while");
+    });
+
+});
 describe('TinyPascalParser - parseBlock', () => {
     test('parseBlock lança erro para bloco vazio', () => {
         const tokens = [
