@@ -1,21 +1,19 @@
+const fs = require('fs');
+const path = require('path');
 const TinyPascalLexer = require('../lexer/lexer');
 const TinyPascalParser = require('./parser');
 
-const exampleCode = `
-  x := 10;
-  y := 20;
-  msg := true;
-  if x < y then
-    x := soma(x, y)
-  else
-    x := 0;
-  imprimeResultado();
-`;
-
-const lexer = new TinyPascalLexer(exampleCode);
+const filePath = path.resolve(__dirname, '../../example.tp');
+const sourceCode = fs.readFileSync(filePath, 'utf-8');
+const lexer = new TinyPascalLexer(sourceCode);
 const tokens = lexer.tokenize();
+const parser = new TinyPascalParser(tokens, lexer.symbolTable);
 
-const parser = new TinyPascalParser(tokens);
-const result = parser.parseStmtList();
-
-console.dir(result, { depth: null });
+try {
+    const ast = parser.parseProgram();
+    console.log('AST gerada com sucesso:');
+    console.dir(ast, { depth: null });
+} catch (err) {
+    console.error('Erro de análise sintática:');
+    console.error(err.message);
+}
