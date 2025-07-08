@@ -28,7 +28,26 @@ class TinyPascalParser {
     }
 
     parseBlock() {
+        const beginToken = this.peek();
+        if (!beginToken || beginToken.type !== 'KEYWORD' || beginToken.value !== 'begin') {
+            throw new Error(`Esperado 'begin' no início do bloco, encontrado: ${beginToken ? beginToken.value : 'EOF'} (linha ${beginToken?.line}, coluna ${beginToken?.column})`);
+        }
+        this.advance();
 
+        const stmtList = this.parseStmtList();
+
+        const endToken = this.peek();
+        if (!endToken || endToken.type !== 'KEYWORD' || endToken.value !== 'end') {
+            throw new Error(`Esperado 'end' ao final do bloco, encontrado: ${endToken ? endToken.value : 'EOF'} (linha ${endToken?.line}, coluna ${endToken?.column})`);
+        }
+        this.advance(); 
+
+        return {
+            type: 'Block',
+            statements: stmtList,
+            line: beginToken.line,
+            column: beginToken.column
+        };
     }
 
     //Declarações
