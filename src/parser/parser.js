@@ -1,5 +1,3 @@
-const { TokenType, Keywords } = require('../lexer/tokens');
-
 class TinyPascalParser {
     constructor(tokens, symbolTable) {
         this.tokens = tokens;
