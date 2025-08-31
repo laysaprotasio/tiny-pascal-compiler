@@ -1,0 +1,335 @@
+const SymbolTable = require('./symbol-table');
+
+class SemanticError extends Error {
+    constructor(message, node) {
+        super(message);
+        this.name = 'SemanticError';
+        if (node && node.line !== undefined) {
+            this.message = `${message} (linha ${node.line}, coluna ${node.column})`;
+        }
+    }
+}
+
+class TinyPascalSemanticAnalyzer {
+    constructor(symbolTable = null) {
+        this.symbolTable = symbolTable || new SymbolTable();
+        this.currentFunctionReturnType = null; 
+    }
+
+    analyzeProgram(programNode) {
+        for (const declaration of programNode.declarations || []) {
+            if (declaration.type === 'VarDeclaration') {
+                this.analyzeVarDeclaration(declaration);
+            } else if (declaration.type === 'ProcedureDeclaration') {
+                this.analyzeProcedureDeclaration(declaration);
+            } else {
+                this.analyzeFunctionDeclaration(declaration);
+            }
+        }
+
+        return this.analyzeBlock(programNode.main);
+    }
+
+    analyzeVarDeclaration(node) {
+        for (const name of node.idents) {
+            try {
+                this.symbolTable.declareSymbol(name, {
+                    type: node.varType,
+                    category: 'variable',
+                    initialized: false,
+                    value: null
+                });
+            } catch (e) {
+                throw new SemanticError(`Redeclaração de identificador '${name}'`, node);
+            }
+        }
+    }
+
+    analyzeProcedureDeclaration(node) {
+        const procName = node.name.name;
+        try {
+            this.symbolTable.declareSymbol(procName, {
+                type: 'procedure',
+                params: node.params || [],
+                returnType: null,
+                category: 'procedure'
+            });
+        } catch (e) {
+            throw new SemanticError(`Redeclaração de procedimento '${node.name}'`, node);
+        }
+
+        this.symbolTable.enterScope();
+
+        for (const param of node.params || []) {
+            this.symbolTable.declareSymbol(param.name, {
+                type: param.paramType,
+                category: 'param',
+                initialized: true,  
+                value: null
+            });
+        }
+
+        this.analyzeBlock(node.body);
+
+        this.symbolTable.exitScope();
+    }
+
+    analyzeFunctionDeclaration(node) {
+        const previousReturnType = this.currentFunctionReturnType;
+        this.currentFunctionReturnType = node.returnType;
+
+        try {
+            const funcName = node.name.name; 
+            this.symbolTable.declareSymbol(funcName, {
+                type: 'function',
+                params: node.params,
+                returnType: node.returnType,
+                category: 'function'
+            });
+            
+        } catch (e) {
+            throw new SemanticError(`Redeclaração de função '${node.name}'`, node);
+        }
+
+        //console.log("Tabela de símbolos após declarar", node.name.name);
+        //console.log(JSON.stringify(this.symbolTable.scopes, null, 2));
+
+        this.symbolTable.enterScope();
+
+        for (const param of node.params || []) {
+            for (const ident of param.idents) {
+                this.symbolTable.declareSymbol(ident, {
+                type: param.paramType,
+                category: 'param',
+                initialized: true,
+                value: null
+                });
+            }
+        }
+
+        this.symbolTable.declareSymbol(node.name, {
+            type: node.returnType,
+            category: 'functionResult',
+            initialized: false,
+            value: null
+        });
+
+        this.analyzeBlock(node.body);
+
+        this.symbolTable.exitScope();
+        
+        this.currentFunctionReturnType = previousReturnType;
+
+    }
+
+    analyzeReturnStmt(node) {
+        if (!this.currentFunctionReturnType) {
+            throw new SemanticError(`'return' usado fora de função`, node);
+        }
+
+        const valInfo = this.analyzeExpr(node.value);
+
+        if (valInfo.type !== this.currentFunctionReturnType) {
+            throw new SemanticError(
+            `Tipo de retorno incompatível: esperado ${this.currentFunctionReturnType}, encontrado ${valInfo.type}`,
+            node
+            );
+        }
+
+        node.inferredType = valInfo.type;
+        node.evaluatedValue = valInfo.value;
+
+        return node;
+    }
+
+    analyzeBlock(blockNode) {
+        this.symbolTable.enterScope();
+        const annotated = {
+            type: 'Block',
+            line: blockNode.line,
+            column: blockNode.column,
+            statements: this.analyzeStmtList(blockNode.statements)
+        };
+        this.symbolTable.exitScope();
+        return annotated;
+    }
+
+    analyzeStmtList(stmtListNode) {
+        const out = { type: 'StmtList', statements: [] };
+        for (const stmt of stmtListNode.statements) {
+            out.statements.push(this.analyzeStmt(stmt));
+        }
+        return out;
+    }
+
+    analyzeStmt(stmt) {
+        switch (stmt.type) {
+            case 'Assign':
+                return this.analyzeAssign(stmt);
+            case 'Call':
+                return this.analyzeCall(stmt);
+            case 'ReturnStmt':
+                return this.analyzeReturnStmt(stmt);
+            default:
+                throw new SemanticError(`Comando não suportado no analisador semântico: ${stmt.type}`, stmt);
+        }
+    }
+
+    analyzeAssign(node) {
+        const target = node.target;
+        if (!target || target.type !== 'Identifier') {
+            throw new SemanticError('Lado esquerdo de atribuição deve ser um identificador', node);
+        }
+        const symbol = this.symbolTable.lookupSymbol(target.name);
+        if (!symbol) {
+            throw new SemanticError(`Variável '${target.name}' não declarada`, target);
+        }
+
+        const valInfo = this.analyzeExpr(node.value);
+
+        if (symbol.type !== valInfo.type) {
+            throw new SemanticError(`Incompatibilidade de tipos na atribuição: '${symbol.type}' := '${valInfo.type}'`, node);
+        }
+
+        this.symbolTable.updateSymbol(target.name, {
+            initialized: true,
+            value: valInfo.value
+        });
+
+        node.inferredType = valInfo.type;
+        node.evaluatedValue = valInfo.value;
+        return node;
+    }
+
+    analyzeCall(node) {
+        const calleeName = node.callee.name;
+        const symbol = this.symbolTable.lookupSymbol(calleeName);
+
+        if (!symbol) {
+            throw new SemanticError(`Procedimento/função '${calleeName}' não declarado`, node);
+        }
+        if (symbol.category !== 'procedure' && symbol.category !== 'function') {
+            throw new SemanticError(`'${calleeName}' não é um procedimento ou função`, node);
+        }
+
+        const expectedParams = symbol.params || [];
+        const givenArgs = node.arguments || [];
+
+        if (expectedParams.length !== givenArgs.length) {
+            throw new SemanticError(
+                `Número incorreto de argumentos para '${calleeName}'. Esperado ${expectedParams.length}, recebido ${givenArgs.length}`,
+                node
+            );
+        }
+
+        for (let i = 0; i < expectedParams.length; i++) {
+            const expected = expectedParams[i];
+            const givenExpr = givenArgs[i];
+            const givenInfo = this.analyzeExpr(givenExpr);
+
+            if (expected.paramType !== givenInfo.type) {
+                throw new SemanticError(
+                    `Tipo incompatível no argumento ${i+1} de '${calleeName}': esperado ${expected.paramType}, recebido ${givenInfo.type}`,
+                    givenExpr
+                );
+            }
+        }
+
+        if (symbol.category === 'procedure') {
+            node.inferredType = 'void';
+            return { type: 'void', value: null };
+        } else {
+            node.inferredType = symbol.returnType;
+            return { type: symbol.returnType, value: null };
+        }
+    }
+
+    analyzeExpr(expr) {
+        switch (expr.type) {
+            case 'Number':
+                return { type: 'integer', value: expr.value };
+            case 'Boolean':
+                return { type: 'boolean', value: expr.value };
+            case 'Identifier': {
+                const symbol = this.symbolTable.lookupSymbol(expr.name);
+                if (!symbol) throw new SemanticError(`Identificador '${expr.name}' não declarado`, expr);
+                return { type: symbol.type, value: symbol.value };
+            }
+            case 'BinaryOp':
+                return this.analyzeBinaryOp(expr);
+            case 'ParenExpr':
+                return this.analyzeExpr(expr.expr);
+            case 'Not': {
+                const info = this._analyzeExpr(expr.factor);
+                if (info.type !== 'boolean') throw new SemanticError(`'not' exige operando booleano`, expr);
+                return { type: 'boolean', value: (info.value !== null ? !info.value : null) };
+            }
+            default:
+                throw new SemanticError(`Expressão não suportada: ${expr.type}`, expr);
+        }
+    }
+
+    analyzeBinaryOp(node) {
+        const left = this.analyzeExpr(node.left);
+        const right = this.analyzeExpr(node.right);
+        const op = node.operator;
+
+        const arithmetic = ['+', '-', '*', '/'];
+        const logical = ['and', 'or'];
+        const relational = ['=', '<>', '<', '<=', '>', '>='];
+
+        if (arithmetic.includes(op)) {
+            if (left.type !== 'integer' || right.type !== 'integer') {
+                throw new SemanticError(`Operador aritmético '${op}' exige operandos inteiros`, node);
+            }
+            const value = (left.value !== null && right.value !== null)
+                ? this.computeArithmetic(op, left.value, right.value)
+                : null;
+            node.inferredType = 'integer';
+            node.evaluatedValue = value;
+            return { type: 'integer', value };
+        } else if (logical.includes(op)) {
+            if (left.type !== 'boolean' || right.type !== 'boolean') {
+                throw new SemanticError(`Operador lógico '${op}' exige operandos booleanos`, node);
+            }
+            const value = (left.value !== null && right.value !== null)
+                ? (op === 'and' ? (left.value && right.value) : (left.value || right.value))
+                : null;
+            node.inferredType = 'boolean';
+            node.evaluatedValue = value;
+            return { type: 'boolean', value };
+        } else if (relational.includes(op)) {
+            if (left.type !== right.type) {
+                throw new SemanticError(`Operadores relacionais exigem tipos compatíveis`, node);
+            }
+            let value = null;
+            if (left.value !== null && right.value !== null) {
+                switch (op) {
+                    case '=': value = left.value === right.value; break;
+                    case '<>': value = left.value !== right.value; break;
+                    case '<': value = left.value < right.value; break;
+                    case '<=': value = left.value <= right.value; break;
+                    case '>': value = left.value > right.value; break;
+                    case '>=': value = left.value >= right.value; break;
+                }
+            }
+            node.inferredType = 'boolean';
+            node.evaluatedValue = value;
+            return { type: 'boolean', value };
+        } else {
+            throw new SemanticError(`Operador desconhecido: ${op}`, node);
+        }
+    }
+
+    computeArithmetic(op, a, b) {
+        switch (op) {
+            case '+': return a + b;
+            case '-': return a - b;
+            case '*': return a * b;
+            case '/': 
+                return Math.floor(a / b);
+        }
+    }
+}
+
+module.exports = { TinyPascalSemanticAnalyzer, SemanticError };
