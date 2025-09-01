@@ -251,7 +251,7 @@ class TinyPascalSemanticAnalyzer {
 
         if (condition.type !== 'boolean') {
             throw new SemanticError(
-            `Condição do IF deve ser booleana, mas foi '${expr.type}'`,
+            `Condição do IF deve ser booleana, mas foi '${condition.type}'`,
             node.expr
             );
         }
@@ -281,7 +281,7 @@ class TinyPascalSemanticAnalyzer {
             case 'ParenExpr':
                 return this.analyzeExpr(expr.expr);
             case 'Not': {
-                const info = this._analyzeExpr(expr.factor);
+                const info = this.analyzeExpr(expr.factor);
                 if (info.type !== 'boolean') throw new SemanticError(`'not' exige operando booleano`, expr);
                 return { type: 'boolean', value: (info.value !== null ? !info.value : null) };
             }
