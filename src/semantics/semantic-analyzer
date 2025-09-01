@@ -47,7 +47,6 @@ class TinyPascalSemanticAnalyzer {
         const procName = node.name.name;
         try {
             this.symbolTable.declareSymbol(procName, {
-                type: 'procedure',
                 params: node.params || [],
                 returnType: null,
                 category: 'procedure'
@@ -77,7 +76,6 @@ class TinyPascalSemanticAnalyzer {
         try {
             const funcName = node.name.name; 
             this.symbolTable.declareSymbol(funcName, {
-                type: 'function',
                 params: node.params,
                 returnType: node.returnType,
                 category: 'function'
