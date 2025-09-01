@@ -172,6 +172,8 @@ class TinyPascalSemanticAnalyzer {
                 return this.analyzeReturnStmt(stmt);
             case 'IfStmt':
                 return this.analyzeIfStmt(stmt);
+            case 'WhileStmt':
+                return this.analyzeWhileStmt(stmt);
             default:
                 throw new SemanticError(`Comando não suportado no analisador semântico: ${stmt.type}`, stmt);
         }
@@ -261,6 +263,21 @@ class TinyPascalSemanticAnalyzer {
         if (node.elseBranch) {
             this.analyzeBlock(node.elseBranch);
         }
+
+        return node;
+    }
+
+    analyzeWhileStmt(node) {
+        const condition = this.analyzeExpr(node.expr);
+
+        if (condition.type !== 'boolean') {
+            throw new SemanticError(
+            `Condicao do WHILE deve ser booleana, mas foi '${condition.type}'`,
+            node.expr
+            );
+        }
+
+        this.analyzeBlock(node.doBranch);
 
         return node;
     }
