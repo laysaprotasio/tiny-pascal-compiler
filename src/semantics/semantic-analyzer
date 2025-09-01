@@ -36,8 +36,6 @@ class TinyPascalSemanticAnalyzer {
                 this.symbolTable.declareSymbol(name, {
                     type: node.varType,
                     category: 'variable',
-                    initialized: false,
-                    value: null
                 });
             } catch (e) {
                 throw new SemanticError(`Redeclaração de identificador '${name}'`, node);
@@ -61,11 +59,9 @@ class TinyPascalSemanticAnalyzer {
         this.symbolTable.enterScope();
 
         for (const param of node.params || []) {
-            this.symbolTable.declareSymbol(param.name, {
+            this.symbolTable.declareSymbol(param.idents, {
                 type: param.paramType,
                 category: 'param',
-                initialized: true,  
-                value: null
             });
         }
 
@@ -101,8 +97,6 @@ class TinyPascalSemanticAnalyzer {
                 this.symbolTable.declareSymbol(ident, {
                 type: param.paramType,
                 category: 'param',
-                initialized: true,
-                value: null
                 });
             }
         }
@@ -111,7 +105,6 @@ class TinyPascalSemanticAnalyzer {
             type: node.returnType,
             category: 'functionResult',
             initialized: false,
-            value: null
         });
 
         this.analyzeBlock(node.body);
@@ -137,7 +130,6 @@ class TinyPascalSemanticAnalyzer {
         }
 
         node.inferredType = valInfo.type;
-        node.evaluatedValue = valInfo.value;
 
         return node;
     }
@@ -187,19 +179,13 @@ class TinyPascalSemanticAnalyzer {
             throw new SemanticError(`Variável '${target.name}' não declarada`, target);
         }
 
-        const valInfo = this.analyzeExpr(node.value);
+        const toAtribute = this.analyzeExpr(node.value);
 
-        if (symbol.type !== valInfo.type) {
-            throw new SemanticError(`Incompatibilidade de tipos na atribuição: '${symbol.type}' := '${valInfo.type}'`, node);
+        if (symbol.type !== toAtribute.type) {
+            throw new SemanticError(`Incompatibilidade de tipos na atribuição: '${symbol.type}' := '${toAtribute.type}'`, node);
         }
 
-        this.symbolTable.updateSymbol(target.name, {
-            initialized: true,
-            value: valInfo.value
-        });
-
-        node.inferredType = valInfo.type;
-        node.evaluatedValue = valInfo.value;
+        node.inferredType = toAtribute.type;
         return node;
     }
 
@@ -235,6 +221,7 @@ class TinyPascalSemanticAnalyzer {
                     givenExpr
                 );
             }
+
         }
 
         if (symbol.category === 'procedure') {
@@ -251,7 +238,7 @@ class TinyPascalSemanticAnalyzer {
 
         if (condition.type !== 'boolean') {
             throw new SemanticError(
-            `Condição do IF deve ser booleana, mas foi '${expr.type}'`,
+            `Condição do IF deve ser booleana, mas foi '${node.expr.type}'`,
             node.expr
             );
         }
@@ -266,24 +253,26 @@ class TinyPascalSemanticAnalyzer {
     }
 
     analyzeExpr(expr) {
+        const symbol = this.symbolTable.lookupSymbol(expr.name);
         switch (expr.type) {
             case 'Number':
-                return { type: 'integer', value: expr.value };
+                return { type: 'integer'};
             case 'Boolean':
-                return { type: 'boolean', value: expr.value };
+                return { type: 'boolean'};
             case 'Identifier': {
-                const symbol = this.symbolTable.lookupSymbol(expr.name);
-                if (!symbol) throw new SemanticError(`Identificador '${expr.name}' não declarado`, expr);
-                return { type: symbol.type, value: symbol.value };
+                if (!symbol) {
+                    throw new SemanticError(`Identificador '${expr.name}' não declarado`, expr);
+                }
+                return { type: symbol.type};
             }
             case 'BinaryOp':
                 return this.analyzeBinaryOp(expr);
             case 'ParenExpr':
                 return this.analyzeExpr(expr.expr);
             case 'Not': {
-                const info = this._analyzeExpr(expr.factor);
+                const info = this.analyzeExpr(expr.factor);
                 if (info.type !== 'boolean') throw new SemanticError(`'not' exige operando booleano`, expr);
-                return { type: 'boolean', value: (info.value !== null ? !info.value : null) };
+                return { type: 'boolean' };
             }
             default:
                 throw new SemanticError(`Expressão não suportada: ${expr.type}`, expr);
@@ -307,8 +296,7 @@ class TinyPascalSemanticAnalyzer {
                 ? this.computeArithmetic(op, left.value, right.value)
                 : null;
             node.inferredType = 'integer';
-            node.evaluatedValue = value;
-            return { type: 'integer', value };
+            return { type: 'integer'};
         } else if (logical.includes(op)) {
             if (left.type !== 'boolean' || right.type !== 'boolean') {
                 throw new SemanticError(`Operador lógico '${op}' exige operandos booleanos`, node);
@@ -317,8 +305,7 @@ class TinyPascalSemanticAnalyzer {
                 ? (op === 'and' ? (left.value && right.value) : (left.value || right.value))
                 : null;
             node.inferredType = 'boolean';
-            node.evaluatedValue = value;
-            return { type: 'boolean', value };
+            return { type: 'boolean'};
         } else if (relational.includes(op)) {
             if (left.type !== right.type) {
                 throw new SemanticError(`Operadores relacionais exigem tipos compatíveis`, node);
@@ -335,8 +322,7 @@ class TinyPascalSemanticAnalyzer {
                 }
             }
             node.inferredType = 'boolean';
-            node.evaluatedValue = value;
-            return { type: 'boolean', value };
+            return { type: 'boolean'};
         } else {
             throw new SemanticError(`Operador desconhecido: ${op}`, node);
         }

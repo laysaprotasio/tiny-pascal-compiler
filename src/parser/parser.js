@@ -37,11 +37,8 @@ class TinyPascalParser {
         // <declarações-globais> ::= [ 'var' { <decl-var> } ] { <decl-proc-func> }
         const declarations = [];
 
-        if (this.peek() && this.peek().type === 'KEYWORD' && this.peek().value === 'var') {
-            this.advance(); // consome 'var'
-            while (this.peek() && this.peek().type === 'IDENTIFIER') {
-                declarations.push(this.parseVarDeclarationSemVar());
-            }
+        while (this.peek() && this.peek().type === 'KEYWORD' && this.peek().value === 'var') {
+            declarations.push(this.parseVarDeclaration()); // esta já consome o 'var'
         }
 
         while (this.peek() && this.peek().type === 'KEYWORD' && (this.peek().value === 'procedure' || this.peek().value === 'function')) {
