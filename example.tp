@@ -30,6 +30,8 @@ end;
 while x <= 5 do
 begin
 x := x + 1
-end
+end;
+
+writeln(y)
 
 end.
