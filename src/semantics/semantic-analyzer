@@ -166,6 +166,8 @@ class TinyPascalSemanticAnalyzer {
                 return this.analyzeIfStmt(stmt);
             case 'WhileStmt':
                 return this.analyzeWhileStmt(stmt);
+            case 'WriteStmt':
+                return this.analyzeWriteStmt(stmt);
             default:
                 throw new SemanticError(`Comando não suportado no analisador semântico: ${stmt.type}`, stmt);
         }
@@ -266,6 +268,25 @@ class TinyPascalSemanticAnalyzer {
 
         this.analyzeBlock(node.doBranch);
 
+        return node;
+    }
+
+    analyzeWriteStmt(node) {
+        const args = node.arguments || [];
+        if (args.length === 0) {
+            throw new SemanticError(`writeln nao permite lista de argumentos vazia`, node);
+        }
+        for (let i = 0; i < args.length; i++) {
+            const info = this.analyzeExpr(args[i]);
+            if (info.type !== 'integer' && info.type !== 'boolean') {
+                throw new SemanticError(
+                    `Argumento ${i + 1} de writeln deve ser integer/boolean, encontrado '${info.type}'`,
+                    args[i]
+                );
+            }
+        }
+        node.inferredType = 'void';
+        node.evaluatedValue = null;
         return node;
     }
 
