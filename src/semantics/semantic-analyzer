@@ -177,6 +177,8 @@ class TinyPascalSemanticAnalyzer {
                 return this.analyzeWhileStmt(stmt);
             case 'BreakStmt':
                 return this.analyzeBreakStmt(stmt);
+            case 'ContinueStmt':
+                return this.analyzeContinueStmt(stmt);
             case 'WriteStmt':
                 return this.analyzeWriteStmt(stmt);
             default:
@@ -294,6 +296,16 @@ class TinyPascalSemanticAnalyzer {
             throw new SemanticError(`'break' usado fora de laço`, node);
         }
         node.inferredType = 'void';
+        node.evaluatedValue = null;
+        return node;
+    }
+
+    analyzeContinueStmt(node) {
+        if (this.loopDepth <= 0) {
+            throw new SemanticError(`'continue' usado fora de laco`, node);
+        }
+        node.inferredType = 'void';
+        node.evaluatedValue = null;
         return node;
     }
 
