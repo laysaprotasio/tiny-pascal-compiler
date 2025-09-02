@@ -31,8 +31,9 @@ class IRBuilder {
 }
 
 class TinyPascalIRGenerator {
-  constructor() {
+  constructor(symbolTable = null) {
     this.builder = new IRBuilder();
+    this.symbolTable = symbolTable;
   }
 
   generate(ast) {
@@ -247,6 +248,11 @@ class TinyPascalIRGenerator {
     for (const argExpr of callNode.arguments || []) {
       const { place } = this.generateExpr(argExpr);
       args.push(place);
+    }
+    const sym = this.symbolTable?.lookupSymbol ? this.symbolTable.lookupSymbol(callee) : null;
+    if (sym && sym.category === 'procedure') {
+      this.builder.emit('call', { callee, args });
+      return { place: null, result: null };
     }
     const t = this.builder.newTemp();
     this.builder.emit('call', { callee, args, target: t });

@@ -132,7 +132,7 @@ function main() {
     const analyzer = new TinyPascalSemanticAnalyzer();
     analyzer.analyzeProgram(ast);
 
-    const irGen = new TinyPascalIRGenerator();
+    const irGen = new TinyPascalIRGenerator(analyzer.symbolTable);
     const ir = irGen.generate(ast);
 
     printIR(ir);
@@ -147,4 +147,3 @@ function main() {
 }
 
 main();
-
