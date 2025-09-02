@@ -85,10 +85,7 @@ class TinyPascalSemanticAnalyzer {
         } catch (e) {
             throw new SemanticError(`Redeclaração de função '${node.name}'`, node);
         }
-
-        //console.log("Tabela de símbolos após declarar", node.name.name);
-        //console.log(JSON.stringify(this.symbolTable.scopes, null, 2));
-
+        
         this.symbolTable.enterScope();
 
         for (const param of node.params || []) {
