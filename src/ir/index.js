@@ -119,10 +119,124 @@ function printTAC(ir) {
   console.log(lines.join('\n'));
 }
 
+// JSON-like readable list form (previous output style)
+function printIRList(ir) {
+  const opMap = {
+    '+': 'add',
+    '-': 'sub',
+    '*': 'mul',
+    '/': 'div',
+    and: 'and',
+    or: 'or',
+    '=': 'eq',
+    '<>': 'neq',
+    '<': 'lt',
+    '<=': 'le',
+    '>': 'gt',
+    '>=': 'ge',
+  };
+
+  function fmtVal(v) {
+    if (typeof v === 'string') return `'${v}'`;
+    if (typeof v === 'number') return String(v);
+    if (v === null || v === undefined) return 'null';
+    return `'${String(v)}'`;
+  }
+
+  function fmtArray(arr) {
+    return `[ ${arr.map(fmtVal).join(', ')} ]`;
+  }
+
+  function fmtInstr(ins) {
+    const op = ins.op;
+    let outOp = op;
+    let args = [];
+    let result = undefined;
+
+    if (opMap[op]) {
+      outOp = opMap[op];
+      args = [ins.left, ins.right];
+      result = ins.target;
+    } else if (op === 'unop' && ins.op === 'not') {
+      outOp = 'not';
+      args = [ins.arg];
+      result = ins.target;
+    } else if (op === 'assign') {
+      outOp = 'mov';
+      args = [ins.arg, ins.target];
+    } else if (op === 'const') {
+      outOp = 'const';
+      args = [ins.value];
+      result = ins.target;
+    } else if (op === 'call') {
+      outOp = 'call';
+      args = [ins.callee, ...(ins.args || [])];
+      result = ins.target;
+    } else if (op === 'return') {
+      outOp = 'ret';
+      args = [ins.arg];
+    } else if (op === 'writeln') {
+      outOp = 'print';
+      args = [ins.arg];
+    } else if (op === 'goto') {
+      outOp = 'jmp';
+      args = [ins.label];
+    } else if (op === 'if_goto') {
+      outOp = 'br';
+      args = [ins.cond, ins.label];
+    } else if (op === 'ifnot_goto') {
+      outOp = 'brfalse';
+      args = [ins.cond, ins.label];
+    } else if (op === 'label') {
+      outOp = 'label';
+      args = [ins.label];
+    } else if (op === 'section' || op === 'endsection') {
+      outOp = op;
+      const a = [];
+      if (ins.kind) a.push(ins.kind);
+      if (ins.name) a.push(ins.name);
+      args = a;
+    } else if (op === 'decl') {
+      outOp = 'decl';
+      args = [ ...(ins.idents || []), ins.varType ? `:${ins.varType}` : '' ].filter(Boolean);
+    } else if (op === 'binop') {
+      // fallback when generator uses 'binop'
+      outOp = opMap[ins.op] || ins.op;
+      args = [ins.left, ins.right];
+      result = ins.target;
+    } else if (op === 'unop') {
+      outOp = ins.op;
+      args = [ins.arg];
+      result = ins.target;
+    }
+
+    const parts = [`op: '${outOp}'`];
+    parts.push(`args: ${fmtArray(args)}`);
+    if (result !== undefined) parts.push(`result: '${result}'`);
+    return `{ ${parts.join(', ')} }`;
+  }
+
+  console.log('code: [');
+  for (const ins of ir) console.log('  ' + fmtInstr(ins) + ',');
+  console.log(']');
+}
+
+function parseArgs() {
+  const argv = process.argv.slice(2);
+  let format = 'tac'; // default to TAC
+  let fileArg = null;
+  for (const a of argv) {
+    if (a === '--tac' || a === '--format=tac') format = 'tac';
+    else if (a === '--obj' || a === '--json' || a === '--format=obj' || a === '--format=json' || a === '--format=list') format = 'obj';
+    else if (!a.startsWith('-') && !fileArg) fileArg = a;
+  }
+  return { format, fileArg };
+}
+
 function main() {
-  const inputArg = process.argv[2];
-  const filePath = inputArg
-    ? path.resolve(process.cwd(), inputArg)
+  const { format, fileArg } = parseArgs();
+  const filePath = fileArg
+    ? path.resolve(process.cwd(), fileArg)
     : path.resolve(__dirname, '../../example.tp');
 
   if (!fs.existsSync(filePath)) {
@@ -144,8 +258,8 @@ function main() {
 
     const irGen = new TinyPascalIRGenerator(analyzer.symbolTable);
     const ir = irGen.generate(ast);
-    // Print plain TAC
-    printTAC(ir);
+    if (format === 'tac') printTAC(ir);
+    else printIRList(ir);
   } catch (e) {
     if (e instanceof SemanticError || e.name === 'SemanticError') {
       console.error(`Erro semântico: ${e.message}`);
