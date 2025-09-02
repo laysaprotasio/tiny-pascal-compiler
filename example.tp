@@ -32,6 +32,29 @@ begin
 x := x + 1
 end;
 
-writeln(y)
+writeln(x);
+
+while x <= 10 do
+begin
+if x = 5 then
+begin
+writeln( x);
+break
+end;
+writeln(x);
+x := x + 1
+end;
+
+while x <= 10 do
+begin
+if x = 5 then
+begin
+writeln(x);
+x := x + 1;
+continue
+end;
+writeln(x);
+x := x + 1
+end
 
 end.
