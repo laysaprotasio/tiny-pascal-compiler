@@ -284,7 +284,6 @@ class TinyPascalSemanticAnalyzer {
             }
         }
         node.inferredType = 'void';
-        node.evaluatedValue = null;
         return node;
     }
 
