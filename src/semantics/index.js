@@ -27,7 +27,9 @@ function main() {
     const parser = new TinyPascalParser(tokens);
     const ast = parser.parseProgram();
 
-    console.log('AST:');
+    console.log('=== Fonte ===');
+    console.log(filePath);
+    console.log('\n=== AST ===');
     console.dir(ast, { depth: null });
 
     const analyzer = new TinyPascalSemanticAnalyzer();
@@ -38,6 +40,7 @@ function main() {
 
     console.log('\nTabela de Símbolos Final:');
     console.log(JSON.stringify(analyzer.symbolTable, null, 2));
+
   } catch (e) {
     if (e instanceof SemanticError || e.name === 'SemanticError') {
       console.error(`Erro semântico: ${e.message}`);

@@ -580,7 +580,6 @@ class TinyPascalParser {
 
     parseWriteStmt() {
         const writeToken = this.peek(); 
-        console.log(writeToken);
         this.advance(); 
 
         const openParen = this.peek();
